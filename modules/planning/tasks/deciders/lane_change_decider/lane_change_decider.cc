@@ -300,6 +300,7 @@ bool LaneChangeDecider::IsClearToChangeLane(
 
     if (reference_line_info->IsChangeLanePath()) {
       static constexpr double kLateralShift = 2.5;
+      // 只能向相邻车道换道，因此不用考虑相距太远的obstacle
       if (end_l < -kLateralShift || start_l > kLateralShift) {
         continue;
       }

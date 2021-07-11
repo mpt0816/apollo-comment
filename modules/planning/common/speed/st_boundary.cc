@@ -123,7 +123,7 @@ bool STBoundary::GetUnblockSRange(const double curr_time, double* s_upper,
                                   double* s_lower) const {
   CHECK_NOTNULL(s_upper);
   CHECK_NOTNULL(s_lower);
-
+  // default: FLAGS_speed_lon_decision_horizon = 200.0m
   *s_upper = FLAGS_speed_lon_decision_horizon;
   *s_lower = 0.0;
   if (curr_time < min_t_ || curr_time > max_t_) {
@@ -192,7 +192,7 @@ bool STBoundary::GetBoundarySRange(const double curr_time, double* s_upper,
              r * (upper_points_[right].s() - upper_points_[left].s());
   *s_lower = lower_points_[left].s() +
              r * (lower_points_[right].s() - lower_points_[left].s());
-
+  // default: FLAGS_speed_lon_decision_horizon = 200.0
   *s_upper = std::fmin(*s_upper, FLAGS_speed_lon_decision_horizon);
   *s_lower = std::fmax(*s_lower, 0.0);
   return true;
@@ -255,7 +255,7 @@ bool STBoundary::IsPointInBoundary(const STPoint& st_point) const {
       st_point, upper_points_[left], upper_points_[right]);
   const double check_lower = common::math::CrossProd(
       st_point, lower_points_[left], lower_points_[right]);
-
+  // 这么做合理的前提是 upper_points_ 在 lower_points_之上，即STBoundary的构造正确
   return (check_upper * check_lower < 0);
 }
 

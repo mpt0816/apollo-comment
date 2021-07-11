@@ -51,6 +51,7 @@ common::Status PiecewiseJerkPathOptimizer::Process(
     const common::TrajectoryPoint& init_point, const bool path_reusable,
     PathData* const final_path_data) {
   // skip piecewise_jerk_path_optimizer if reused path
+  // 默认配置参数: FLAGS_enable_skip_path_tasks = false 跳过所有path规划，使用上一帧结果
   if (FLAGS_enable_skip_path_tasks && path_reusable) {
     return Status::OK();
   }
@@ -58,10 +59,12 @@ common::Status PiecewiseJerkPathOptimizer::Process(
          << ", y = " << init_point.path_point().y()
          << ", and angle = " << init_point.path_point().theta();
   common::TrajectoryPoint planning_start_point = init_point;
+  // 默认配置: FLAGS_use_front_axe_center_in_path_planning = false
   if (FLAGS_use_front_axe_center_in_path_planning) {
     planning_start_point =
         InferFrontAxeCenterFromRearAxeCenter(planning_start_point);
   }
+  // 计算起始状态的l,dl,ddl
   const auto init_frenet_state =
       reference_line.ToFrenetFrame(planning_start_point);
 
@@ -72,7 +75,8 @@ common::Status PiecewiseJerkPathOptimizer::Process(
                                  .lane_change_path_config()
                            : config_.piecewise_jerk_path_optimizer_config()
                                  .default_path_config();
-
+  // 设置w_l,w_dl,w_ddl,w_dddl,w_obs的权重,在QP求解器中没有考虑对obs的优化
+  // w_dl为什么进行了处理？？
   std::array<double, 5> w = {
       config.l_weight(),
       config.dl_weight() *
@@ -109,7 +113,7 @@ common::Status PiecewiseJerkPathOptimizer::Process(
     std::vector<double> opt_ddl;
 
     std::array<double, 3> end_state = {0.0, 0.0, 0.0};
-
+    // 默认配置: FLAGS_enable_force_pull_over_open_space_parking_test = fasle
     if (!FLAGS_enable_force_pull_over_open_space_parking_test) {
       // pull over scenario
       // set end lateral to be at the desired pull over destination
@@ -162,6 +166,7 @@ common::Status PiecewiseJerkPathOptimizer::Process(
       double s = static_cast<double>(i) * path_boundary.delta_s() +
                  path_boundary.start_s();
       double kappa = reference_line.GetNearestReferencePoint(s).kappa();
+      // 为什么？？
       ddl_bounds.emplace_back(-lat_acc_bound - kappa, lat_acc_bound - kappa);
     }
 
@@ -268,7 +273,7 @@ bool PiecewiseJerkPathOptimizer::OptimizePath(
     // l weight = weight_x_ + weight_x_ref_ = (1.0 + 0.0)
     std::vector<double> weight_x_ref_vec(kNumKnots, 0.0);
     // increase l weight for path reference part only
-
+    // default: path_reference_l_weight = 0.0
     const double peak_value = config_.piecewise_jerk_path_optimizer_config()
                                   .path_reference_l_weight();
     const double peak_value_x =
@@ -287,12 +292,13 @@ bool PiecewiseJerkPathOptimizer::OptimizePath(
   piecewise_jerk_problem.set_weight_dx(w[1]);
   piecewise_jerk_problem.set_weight_ddx(w[2]);
   piecewise_jerk_problem.set_weight_dddx(w[3]);
-
+  // 使优化变量统一到同一个数量级，保证求解的稳定性
   piecewise_jerk_problem.set_scale_factor({1.0, 10.0, 100.0});
 
   auto start_time = std::chrono::system_clock::now();
 
   piecewise_jerk_problem.set_x_bounds(lat_boundaries);
+  // default: FLAGS_lateral_derivative_bound_default = 2.0
   piecewise_jerk_problem.set_dx_bounds(-FLAGS_lateral_derivative_bound_default,
                                        FLAGS_lateral_derivative_bound_default);
   piecewise_jerk_problem.set_ddx_bounds(ddl_bounds);
@@ -354,7 +360,7 @@ FrenetFramePath PiecewiseJerkPathOptimizer::ToPiecewiseJerkPath(
     frenet_frame_point.set_dl(dl);
     frenet_frame_point.set_ddl(ddl);
     frenet_frame_path.push_back(std::move(frenet_frame_point));
-
+    // default: FLAGS_trajectory_space_resolution = 1.0
     accumulated_s += FLAGS_trajectory_space_resolution;
   }
 

@@ -81,6 +81,7 @@ bool StGraphData::SetSTDrivableBoundary(
     st_bound_instance->set_t(std::get<0>(s_boundary[i]));
     st_bound_instance->set_s_lower(std::get<1>(s_boundary[i]));
     st_bound_instance->set_s_upper(std::get<2>(s_boundary[i]));
+    // default: kObsSpeedIgnoreThreshold = 100.0
     if (std::get<1>(v_obs_info[i]) > -kObsSpeedIgnoreThreshold) {
       st_bound_instance->set_v_obs_lower(std::get<1>(v_obs_info[i]));
     }

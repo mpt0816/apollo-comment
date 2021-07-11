@@ -35,11 +35,12 @@ void STDrivingLimits::Init(const double max_acc, const double max_dec,
   lower_v0_ = curr_v;
   lower_s0_ = 0.0;
 }
-
+// 根据adc的最大动力学边界计算s的范围
 std::pair<double, double> STDrivingLimits::GetVehicleDynamicsLimits(
     const double t) const {
   std::pair<double, double> dynamic_limits;
   // Process lower bound: (constant deceleration)
+  // 以最大减速度减速到0的时间
   double dec_time = lower_v0_ / max_dec_;
   if (t - lower_t0_ < dec_time) {
     dynamic_limits.first =
@@ -50,6 +51,7 @@ std::pair<double, double> STDrivingLimits::GetVehicleDynamicsLimits(
   }
 
   // Process upper bound: (constant acceleration)
+  // 以最大加速度加速到最大速度的时间
   double acc_time = (max_v_ - upper_v0_) / max_acc_;
   if (t - upper_t0_ < acc_time) {
     dynamic_limits.second =
@@ -62,7 +64,7 @@ std::pair<double, double> STDrivingLimits::GetVehicleDynamicsLimits(
 
   return dynamic_limits;
 }
-
+// 使s在block的限制内
 void STDrivingLimits::UpdateBlockingInfo(const double t, const double lower_s,
                                          const double lower_v,
                                          const double upper_s,

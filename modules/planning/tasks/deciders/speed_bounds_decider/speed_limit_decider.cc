@@ -42,7 +42,7 @@ SpeedLimitDecider::SpeedLimitDecider(const SpeedBoundsDeciderConfig& config,
       path_data_(path_data),
       vehicle_param_(common::VehicleConfigHelper::GetConfig().vehicle_param()) {
 }
-
+// 根据地图限速、曲率限速、最近障碍物限速求每个s处的最终速度限制
 Status SpeedLimitDecider::GetSpeedLimits(
     const IndexedList<std::string, Obstacle>& obstacles,
     SpeedLimit* const speed_limit_data) const {
@@ -67,6 +67,8 @@ Status SpeedLimitDecider::GetSpeedLimits(
 
     // (2) speed limit from path curvature
     //  -- 2.1: limit by centripetal force (acceleration)
+    // default: max_centric_acceleration_limit = 2.0
+    // default: minimal_kappa = 0.00001
     const double speed_limit_from_centripetal_acc =
         std::sqrt(speed_bounds_config_.max_centric_acceleration_limit() /
                   std::fmax(std::fabs(discretized_path.at(i).kappa()),
@@ -77,6 +79,7 @@ Status SpeedLimitDecider::GetSpeedLimits(
     // nudge decisions.
     double speed_limit_from_nearby_obstacles =
         std::numeric_limits<double>::max();
+    // proto default: collision_safety_range = 1.0
     const double collision_safety_range =
         speed_bounds_config_.collision_safety_range();
     for (const auto* ptr_obstacle : obstacles.Items()) {
@@ -133,9 +136,11 @@ Status SpeedLimitDecider::GetSpeedLimits(
       if (is_close_on_left || is_close_on_right) {
         double nudge_speed_ratio = 1.0;
         if (ptr_obstacle->IsStatic()) {
+          // default: static_obs_nudge_speed_ratio = 0.6
           nudge_speed_ratio =
               speed_bounds_config_.static_obs_nudge_speed_ratio();
         } else {
+          // default: dynamic_obs_nudge_speed_ratio = 0.8
           nudge_speed_ratio =
               speed_bounds_config_.dynamic_obs_nudge_speed_ratio();
         }
@@ -146,7 +151,9 @@ Status SpeedLimitDecider::GetSpeedLimits(
     }
 
     double curr_speed_limit = 0.0;
+    // default: FLAGS_enable_nudge_slowdown = true
     if (FLAGS_enable_nudge_slowdown) {
+      // default: lowest_speed = 2.5
       curr_speed_limit =
           std::fmax(speed_bounds_config_.lowest_speed(),
                     std::min({speed_limit_from_reference_line,

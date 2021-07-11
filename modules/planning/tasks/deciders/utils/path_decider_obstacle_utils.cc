@@ -36,6 +36,7 @@ bool IsWithinPathDeciderScopeObstacle(const Obstacle& obstacle) {
     return false;
   }
   // Obstacle should not be moving obstacle.
+  // 默认配置 FLAGS_static_obstacle_speed_threshold = 0.5
   if (!obstacle.IsStatic() ||
       obstacle.speed() > FLAGS_static_obstacle_speed_threshold) {
     return false;

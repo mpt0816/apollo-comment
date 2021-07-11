@@ -106,6 +106,7 @@ Status STBoundaryMapper::ComputeSTBoundary(PathDecision* path_decision) const {
       //    fine-tune the upper/lower st-boundary of related obstacles.
       ComputeSTBoundaryWithDecision(ptr_obstacle, decision);
     } else if (!decision.has_ignore()) {
+      // 这里是不是一个bug？？ 应该是 else if (decision.has_ignore()) 吧？
       // 3. Ignore those unrelated obstacles.
       AWARN << "No mapping for decision: " << decision.DebugString();
     }
@@ -151,7 +152,7 @@ bool STBoundaryMapper::MapStopDecision(
   point_pairs.emplace_back(STPoint(s_min, 0.0), STPoint(s_max, 0.0));
   point_pairs.emplace_back(
       STPoint(s_min, planning_max_time_),
-      STPoint(s_max + speed_bounds_config_.boundary_buffer(),
+      STPoint(s_max + speed_bounds_config_.boundary_buffer(),  // default: boundary_buffer = 0.25
               planning_max_time_));
   auto boundary = STBoundary(point_pairs);
   boundary.SetBoundaryType(STBoundary::BoundaryType::STOP);
@@ -162,6 +163,7 @@ bool STBoundaryMapper::MapStopDecision(
 }
 
 void STBoundaryMapper::ComputeSTBoundary(Obstacle* obstacle) const {
+  // default: FLAGS_use_st_drivable_boundary = false
   if (FLAGS_use_st_drivable_boundary) {
     return;
   }
@@ -203,7 +205,8 @@ bool STBoundaryMapper::GetOverlapBoundaryPoints(
   const auto* planning_status = injector_->planning_context()
                                     ->mutable_planning_status()
                                     ->mutable_change_lane();
-
+  // default: FLAGS_lane_change_obstacle_nudge_l_buffer = 0.3
+  // default: FLAGS_nonstatic_obstacle_nudge_l_buffer = 0.4                              
   double l_buffer =
       planning_status->status() == ChangeLaneStatus::IN_CHANGE_LANE
           ? FLAGS_lane_change_obstacle_nudge_l_buffer
@@ -272,6 +275,7 @@ bool STBoundaryMapper::GetOverlapBoundaryPoints(
       }
 
       const double step_length = vehicle_param_.front_edge_to_center();
+      // default: FLAGS_max_trajectory_len = 1000.0
       auto path_len =
           std::min(FLAGS_max_trajectory_len, discretized_path.Length());
       // Go through every point of the ADC's path.
@@ -281,6 +285,7 @@ bool STBoundaryMapper::GetOverlapBoundaryPoints(
         if (CheckOverlap(curr_adc_path_point, obs_box, l_buffer)) {
           // Found overlap, start searching with higher resolution
           const double backward_distance = -step_length;
+          // 越过obstacle后的不碰撞区域，加上车辆的宽度和障碍物的宽度可以保障是不碰撞的，然后再以小步长仔细搜索
           const double forward_distance = vehicle_param_.length() +
                                           vehicle_param_.width() +
                                           obs_box.length() + obs_box.width();
@@ -320,6 +325,7 @@ bool STBoundaryMapper::GetOverlapBoundaryPoints(
             }
           }
           if (find_high && find_low) {
+            // default: point_extension = 0.0
             lower_points->emplace_back(
                 low_s - speed_bounds_config_.point_extension(),
                 trajectory_point_time);

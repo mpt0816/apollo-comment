@@ -199,8 +199,9 @@ void Polygon2d::BuildFromPoints() {
   num_points_ = static_cast<int>(points_.size());
   CHECK_GE(num_points_, 3);
 
-  // Make sure the points are in ccw order.
+  // Make sure the points are in ccw order. 逆时针顺序
   area_ = 0.0;
+  // 利用叉乘计算三角形面积
   for (int i = 1; i < num_points_; ++i) {
     area_ += CrossProd(points_[0], points_[i - 1], points_[i]);
   }

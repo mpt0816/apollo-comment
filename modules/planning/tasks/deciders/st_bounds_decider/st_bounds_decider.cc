@@ -96,6 +96,8 @@ void STBoundsDecider::InitSTBoundsDecider(
   st_obstacles_processor_.Init(path_data.discretized_path().Length(),
                                st_bounds_config_.total_time(), path_data,
                                path_decision, injector_->history());
+  // 生成每个的障碍物的STBoundary，并对所有obstacle的st约束进行-排序
+  // 计算最近的静态障碍物和裁剪后是每个障碍物的st约束等信息
   st_obstacles_processor_.MapObstaclesToSTBoundaries(path_decision);
   auto time2 = std::chrono::system_clock::now();
   std::chrono::duration<double> diff = time2 - time1;
@@ -228,6 +230,7 @@ Status STBoundsDecider::GenerateRegularSTBound(
     STBound* const st_bound, STBound* const vt_bound,
     std::vector<std::pair<double, double>>* const st_guide_line) {
   // Initialize st-boundary.
+  // default: kSTBoundsDeciderResolution = 0.1
   for (double curr_t = 0.0; curr_t <= st_bounds_config_.total_time();
        curr_t += kSTBoundsDeciderResolution) {
     st_bound->emplace_back(curr_t, std::numeric_limits<double>::lowest(),
@@ -244,6 +247,7 @@ Status STBoundsDecider::GenerateRegularSTBound(
     ADEBUG << "Processing st-boundary at t = " << t;
 
     // Get Boundary due to driving limits
+    // 根据adc的最大加速度和最大减速度计算st范围
     auto driving_limits_bound = st_driving_limits_.GetVehicleDynamicsLimits(t);
     s_lower = std::fmax(s_lower, driving_limits_bound.first);
     s_upper = std::fmin(s_upper, driving_limits_bound.second);
@@ -270,6 +274,7 @@ Status STBoundsDecider::GenerateRegularSTBound(
                           available_s_bounds[j].second),
           available_obs_decisions[j]);
     }
+    // 刪除不符合动力学約束的
     RemoveInvalidDecisions(driving_limits_bound, &available_choices);
 
     if (!available_choices.empty()) {
@@ -376,6 +381,7 @@ void STBoundsDecider::RankDecisions(
                       std::fmax(driving_limit.first, A_s_lower);
       double B_room = std::fmin(driving_limit.second, B_s_upper) -
                       std::fmax(driving_limit.first, B_s_lower);
+      // default: kSTPassableThreshold = 3.0
       if (A_room < kSTPassableThreshold || B_room < kSTPassableThreshold) {
         if (A_room < B_room) {
           swap(available_choices->at(i + 1), available_choices->at(i));

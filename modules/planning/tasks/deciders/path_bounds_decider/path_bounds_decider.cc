@@ -62,6 +62,7 @@ Status PathBoundsDecider::Process(
   CHECK_NOTNULL(reference_line_info);
 
   // Skip the path boundary decision if reusing the path.
+  // 默认配置 FLAGS_enable_skip_path_tasks = false
   if (FLAGS_enable_skip_path_tasks && reference_line_info->path_reusable()) {
     return Status::OK();
   }
@@ -165,6 +166,7 @@ Status PathBoundsDecider::Process(
     }
 
     // disable this change when not extending lane bounds to include adc
+    // proto定义中默认配置 is_extend_lane_bounds_to_include_adc = true
     if (config_.path_bounds_decider_config()
             .is_extend_lane_bounds_to_include_adc()) {
       CHECK_LE(adc_frenet_l_, std::get<2>(lanechange_path_bound[0]));
@@ -272,6 +274,7 @@ void PathBoundsDecider::InitPathBoundsDecider(
     const Frame& frame, const ReferenceLineInfo& reference_line_info) {
   const ReferenceLine& reference_line = reference_line_info.reference_line();
   common::TrajectoryPoint planning_start_point = frame.PlanningStartPoint();
+  // 默认配置 FLAGS_use_front_axe_center_in_path_planning = false 
   if (FLAGS_use_front_axe_center_in_path_planning) {
     planning_start_point =
         InferFrontAxeCenterFromRearAxeCenter(planning_start_point);
@@ -284,10 +287,10 @@ void PathBoundsDecider::InitPathBoundsDecider(
   // Initialize some private variables.
   // ADC s/l info.
   auto adc_sl_info = reference_line.ToFrenetFrame(planning_start_point);
-  adc_frenet_s_ = adc_sl_info.first[0];
-  adc_frenet_l_ = adc_sl_info.second[0];
-  adc_frenet_sd_ = adc_sl_info.first[1];
-  adc_frenet_ld_ = adc_sl_info.second[1] * adc_frenet_sd_;
+  adc_frenet_s_ = adc_sl_info.first[0];  // s 纵向距离
+  adc_frenet_l_ = adc_sl_info.second[0]; // d 横向距离
+  adc_frenet_sd_ = adc_sl_info.first[1]; // s_dot, ds / dt 纵向速度
+  adc_frenet_ld_ = adc_sl_info.second[1] * adc_frenet_sd_; // dprime, dd / ds, dd / ds * ds / dt = dd / dt 横向速度
   double offset_to_map = 0.0;
   reference_line.GetOffsetToMap(adc_frenet_s_, &offset_to_map);
   adc_l_to_lane_center_ = adc_frenet_l_ + offset_to_map;
@@ -503,6 +506,8 @@ Status PathBoundsDecider::GeneratePullOverPathBound(
         std::get<1>(pull_over_configuration));
     pull_over_status->mutable_position()->set_z(0.0);
     pull_over_status->set_theta(std::get<2>(pull_over_configuration));
+    // 默认配置 FLAGS_obstacle_lon_start_buffer = 3.0
+    // 默认配置 FLAGS_obstacle_lon_end_buffer = 2.0
     pull_over_status->set_length_front(FLAGS_obstacle_lon_start_buffer);
     pull_over_status->set_length_back(FLAGS_obstacle_lon_end_buffer);
     pull_over_status->set_width_left(
@@ -516,6 +521,7 @@ Status PathBoundsDecider::GeneratePullOverPathBound(
   }
 
   // Trim path-bound properly
+  // default: kNumExtraTailBoundPoint = 20
   while (static_cast<int>(path_bound->size()) - 1 >
          curr_idx + kNumExtraTailBoundPoint) {
     path_bound->pop_back();
@@ -561,6 +567,7 @@ int PathBoundsDecider::IsPointWithinPathBound(
     const std::vector<std::tuple<double, double, double>>& path_bound) {
   common::SLPoint point_sl;
   reference_line_info.reference_line().XYToSL({x, y}, &point_sl);
+  // defalut: kPathBoundsDeciderResolution = 0.5
   if (point_sl.s() > std::get<0>(path_bound.back()) ||
       point_sl.s() <
           std::get<0>(path_bound.front()) - kPathBoundsDeciderResolution * 2) {
@@ -604,6 +611,7 @@ bool PathBoundsDecider::FindDestinationPullOverS(
   // Check if destination is some distance away from ADC.
   ADEBUG << "Destination s[" << destination_s << "] adc_end_s[" << adc_end_s
          << "]";
+  // 默认配置 pull_over_destination_to_adc_buffer = 25.0
   if (destination_s - adc_end_s < config_.path_bounds_decider_config()
                                       .pull_over_destination_to_adc_buffer()) {
     AERROR << "Destination is too close to ADC. distance["
@@ -612,6 +620,7 @@ bool PathBoundsDecider::FindDestinationPullOverS(
   }
 
   // Check if destination is within path-bounds searching scope.
+  // 默认配置 pull_over_destination_to_pathend_buffer = 4.0
   const double destination_to_pathend_buffer =
       config_.path_bounds_decider_config()
           .pull_over_destination_to_pathend_buffer();
@@ -632,6 +641,7 @@ bool PathBoundsDecider::FindEmergencyPullOverS(
                                      ->GetConfig()
                                      .vehicle_param()
                                      .min_turn_radius();
+  // 默认配置 pull_over_approach_lon_distance_adjust_factor = 1.5
   const double adjust_factor =
       config_.path_bounds_decider_config()
           .pull_over_approach_lon_distance_adjust_factor();
@@ -654,12 +664,14 @@ bool PathBoundsDecider::SearchPullOverPosition(
   double pull_over_s = 0.0;
   if (pull_over_status.pull_over_type() ==
       PullOverStatus::EMERGENCY_PULL_OVER) {
+    // adc要尽快停下来，使用车辆最小转向半径计算停车距离
     if (!FindEmergencyPullOverS(reference_line_info, &pull_over_s)) {
       AERROR << "Failed to find emergency_pull_over s";
       return false;
     }
     search_backward = false;  // search FORWARD from target position
   } else if (pull_over_status.pull_over_type() == PullOverStatus::PULL_OVER) {
+    // 使用routing的终点计算停车距离
     if (!FindDestinationPullOverS(frame, reference_line_info, path_bound,
                                   &pull_over_s)) {
       AERROR << "Failed to find pull_over s upon destination arrival";
@@ -690,13 +702,16 @@ bool PathBoundsDecider::SearchPullOverPosition(
   }
 
   // Search for a feasible location for pull-over.
+  // default: kPulloverLonSearchCoeff = 1.5
   const double pull_over_space_length =
       kPulloverLonSearchCoeff *
           VehicleConfigHelper::GetConfig().vehicle_param().length() -
       FLAGS_obstacle_lon_start_buffer - FLAGS_obstacle_lon_end_buffer;
+  // default: kPulloverLatSearchCoeff = 1.25
   const double pull_over_space_width =
       (kPulloverLatSearchCoeff - 1.0) *
       VehicleConfigHelper::GetConfig().vehicle_param().width();
+  // pull_over_space_width是不是需要大于adc宽度？kPulloverLatSearchCoeff的配置是不是需要大于2.0？
   const double adc_half_width =
       VehicleConfigHelper::GetConfig().vehicle_param().width() / 2.0;
 
@@ -748,6 +763,7 @@ bool PathBoundsDecider::SearchPullOverPosition(
       ADEBUG << "s[" << curr_s << "] curr_road_left_width["
              << curr_road_left_width << "] curr_road_right_width["
              << curr_road_right_width << "]";
+      // default: pull_over_road_edge_buffer = 0.15
       if (curr_road_right_width - (curr_right_bound + adc_half_width) >
           config_.path_bounds_decider_config().pull_over_road_edge_buffer()) {
         AERROR << "Not close enough to road-edge. Not feasible for pull-over.";
@@ -758,6 +774,7 @@ bool PathBoundsDecider::SearchPullOverPosition(
       const double left_bound = std::get<2>(path_bound[j]);
       ADEBUG << "left_bound[" << left_bound << "] right_bound[" << right_bound
              << "]";
+      // 这里边界的宽度应该是小于车宽吧，上面的pull_over_space_width计算过程是否有问题？？？
       if (left_bound - right_bound < pull_over_space_width) {
         AERROR << "Not wide enough to fit ADC. Not feasible for pull-over.";
         is_feasible_window = false;
@@ -776,6 +793,7 @@ bool PathBoundsDecider::SearchPullOverPosition(
       // to front and back
       const auto& vehicle_param =
           VehicleConfigHelper::GetConfig().vehicle_param();
+      // 什么意思？？？
       const double back_clear_to_total_length_ratio =
           (0.5 * (kPulloverLonSearchCoeff - 1.0) * vehicle_param.length() +
            vehicle_param.back_edge_to_center()) /
@@ -906,6 +924,8 @@ bool PathBoundsDecider::InitPathBoundary(
 
   // Starting from ADC's current position, increment until the horizon, and
   // set lateral bounds to be infinite at every spot.
+  // 默认配置 FLAGS_trajectory_time_length = 8.0, default_cruise_speed = 5.0
+  // 默认配置 kPathBoundsDeciderHorizon = 100.0
   for (double curr_s = adc_frenet_s_;
        curr_s < std::fmin(adc_frenet_s_ +
                               std::fmax(kPathBoundsDeciderHorizon,
@@ -1199,7 +1219,7 @@ bool PathBoundsDecider::GetBoundaryFromLanesAndADC(
     static constexpr double kMaxLateralAccelerations = 1.5;
     double offset_to_map = 0.0;
     reference_line.GetOffsetToMap(curr_s, &offset_to_map);
-
+    // 横向减速为0需要的距离
     double ADC_speed_buffer = (adc_frenet_ld_ > 0 ? 1.0 : -1.0) *
                               adc_frenet_ld_ * adc_frenet_ld_ /
                               kMaxLateralAccelerations / 2.0;
@@ -1217,7 +1237,7 @@ bool PathBoundsDecider::GetBoundaryFromLanesAndADC(
 
     double curr_left_bound = 0.0;
     double curr_right_bound = 0.0;
-
+    // 默认配置 is_extend_lane_bounds_to_include_adc = true
     if (config_.path_bounds_decider_config()
             .is_extend_lane_bounds_to_include_adc() ||
         is_fallback_lanechange) {
@@ -1345,6 +1365,7 @@ void PathBoundsDecider::GetBoundaryFromLaneChangeForbiddenZone(
     lane_change_start_s = point_sl.s();
   } else {
     // TODO(jiacheng): train ML model to learn this.
+    // 默认配置: FLAGS_lane_change_prepare_length = 80.0
     lane_change_start_s = FLAGS_lane_change_prepare_length + adc_frenet_s_;
 
     // Update the decided lane_change_start_s into planning-context.
@@ -1414,8 +1435,10 @@ bool PathBoundsDecider::GetBoundaryFromStaticObstacles(
   double center_line = adc_frenet_l_;
   size_t obs_idx = 0;
   int path_blocked_idx = -1;
+  // 右侧边界在sl坐标系中为负值，应该选用值最大的作为边界，因此从大到小排序
   std::multiset<double, std::greater<double>> right_bounds;
   right_bounds.insert(std::numeric_limits<double>::lowest());
+  // 右侧边界在sl坐标系中为正值，应该选用值最小的作为边界，因此从小到大排序
   std::multiset<double> left_bounds;
   left_bounds.insert(std::numeric_limits<double>::max());
   // Maps obstacle ID's to the decided ADC pass direction, if ADC should
@@ -1448,6 +1471,9 @@ bool PathBoundsDecider::GetBoundaryFromStaticObstacles(
           //   - Update the left/right bound accordingly.
           //   - If boundaries blocked, then decide whether can side-pass.
           //   - If yes, then borrow neighbor lane to side-pass.
+          // center_line是可通行区域的中心，在 UpdatePathBoundaryAndCenterLineWithBuffer 函数中有更新
+          // center_line = (left_bound + right_bound) / 2.0
+          // 基于可行驶空间的中心判断从左还是从右side pass要由于基于参考线判断，可以一定程度上避免规划路径绕路的情况
           if (curr_obstacle_l_min + curr_obstacle_l_max < center_line * 2) {
             // Obstacle is to the right of center-line, should pass from left.
             obs_id_to_direction[curr_obstacle_id] = true;
@@ -1465,6 +1491,7 @@ bool PathBoundsDecider::GetBoundaryFromStaticObstacles(
             break;
           }
         } else {
+          // 删除obstacle在curr_s处的边界，为了计算next curr_s
           // An existing obstacle exits our scope.
           if (obs_id_to_direction[curr_obstacle_id]) {
             right_bounds.erase(right_bounds.find(curr_obstacle_l_max));
@@ -1498,6 +1525,7 @@ bool PathBoundsDecider::GetBoundaryFromStaticObstacles(
       }
     } else {
       // If no obstacle change, update the bounds and center_line.
+      // right_bounds left_bounds中的值是多少？？？？
       std::get<1>((*path_boundaries)[i]) =
           std::fmax(std::get<1>((*path_boundaries)[i]),
                     *right_bounds.begin() + GetBufferBetweenADCCenterAndEdge());
@@ -1537,6 +1565,7 @@ std::vector<ObstacleEdge> PathBoundsDecider::SortObstaclesForSweepLine(
   // Go through every obstacle and preprocess it.
   for (const auto* obstacle : indexed_obstacles.Items()) {
     // Only focus on those within-scope obstacles.
+    // 不考虑virtual、dynamic(v>0.5)、ignore obstacle
     if (!IsWithinPathDeciderScopeObstacle(*obstacle)) {
       continue;
     }
@@ -1547,6 +1576,9 @@ std::vector<ObstacleEdge> PathBoundsDecider::SortObstaclesForSweepLine(
     // Decompose each obstacle's rectangle into two edges: one at
     // start_s; the other at end_s.
     const auto obstacle_sl = obstacle->PerceptionSLBoundary();
+    // 默认配置 FLAGS_obstacle_lon_start_buffer = 3.0
+    // 默认配置 FLAGS_obstacle_lon_end_buffer = 2.0
+    // 默认配置 FLAGS_obstacle_lat_buffer = 0.4
     sorted_obstacles.emplace_back(
         1, obstacle_sl.start_s() - FLAGS_obstacle_lon_start_buffer,
         obstacle_sl.start_l() - FLAGS_obstacle_lat_buffer,
@@ -1795,6 +1827,7 @@ bool PathBoundsDecider::UpdatePathBoundaryWithBuffer(
     bool is_right_lane_bound) {
   // substract vehicle width when bound does not come from the lane boundary
   const double default_adc_buffer_coeff = 1.0;
+  // 默认配置 adc_buffer_coeff = 1.0
   double left_adc_buffer_coeff =
       (is_left_lane_bound
            ? config_.path_bounds_decider_config().adc_buffer_coeff()

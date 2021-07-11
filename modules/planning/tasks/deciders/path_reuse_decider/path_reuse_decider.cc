@@ -48,7 +48,7 @@ Status PathReuseDecider::Process(Frame* const frame,
   // Sanity checks.
   CHECK_NOTNULL(frame);
   CHECK_NOTNULL(reference_line_info);
-
+  // reuse_path默认配置为false
   if (!Decider::config_.path_reuse_decider_config().reuse_path()) {
     ADEBUG << "skipping reusing path: conf";
     reference_line_info->set_path_reusable(false);
@@ -73,6 +73,7 @@ Status PathReuseDecider::Process(Frame* const frame,
   ADEBUG << "lane change status: " << lane_change_status->ShortDebugString();
 
   // skip path reuse if not in_change_lane
+  // 默认配置 FLAGS_enable_reuse_path_in_lane_follow = false
   if (lane_change_status->status() != ChangeLaneStatus::IN_CHANGE_LANE &&
       !FLAGS_enable_reuse_path_in_lane_follow) {
     ADEBUG << "skipping reusing path: not in lane_change";

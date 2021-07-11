@@ -32,7 +32,7 @@
 
 namespace apollo {
 namespace planning {
-
+// 需要重载Ipopt::TNLP中的一些函数
 class PiecewiseJerkSpeedNonlinearIpoptInterface : public Ipopt::TNLP {
  public:
   PiecewiseJerkSpeedNonlinearIpoptInterface(
@@ -82,31 +82,38 @@ class PiecewiseJerkSpeedNonlinearIpoptInterface : public Ipopt::TNLP {
   void set_w_soft_s_bound(const double w_soft_s_bound);
 
   /** Method to return some info about the nlp */
+  // 重载TNLP，对优化问题的维度进行设置，包括变量个数n，约束条件(线性和非线性方程)个数m，Jacobian非零项，Hessian非零项，编程语言
   bool get_nlp_info(int &n, int &m, int &nnz_jac_g, int &nnz_h_lag,
                     IndexStyleEnum &index_style) override;
 
   /** Method to return the bounds for my problem */
+  // 重载TNLP，设置优化变量的上下限范围及约束条件的上下限
   bool get_bounds_info(int n, double *x_l, double *x_u, int m, double *g_l,
                        double *g_u) override;
 
   /** Method to return the starting point for the algorithm */
+  // 重载TNLP，设置优化问题的起点
   bool get_starting_point(int n, bool init_x, double *x, bool init_z,
                           double *z_L, double *z_U, int m, bool init_lambda,
                           double *lambda) override;
 
   /** Method to return the objective value */
+  // 重载TNLP，设置cost function
   bool eval_f(int n, const double *x, bool new_x, double &obj_value) override;
 
   /** Method to return the gradient of the objective */
+  // 重载TNLP，计算cost function的gradient
   bool eval_grad_f(int n, const double *x, bool new_x, double *grad_f) override;
 
   /** Method to return the constraint residuals */
+  // 重载TNLP，设置约束条件
   bool eval_g(int n, const double *x, bool new_x, int m, double *g) override;
 
   /** Method to return:
    *   1) The structure of the jacobian (if "values" is nullptr)
    *   2) The values of the jacobian (if "values" is not nullptr)
    */
+  // 重载TNLP，设置约束条件中的雅克比矩阵
   bool eval_jac_g(int n, const double *x, bool new_x, int m, int nele_jac,
                   int *iRow, int *jCol, double *values) override;
 
@@ -115,6 +122,7 @@ class PiecewiseJerkSpeedNonlinearIpoptInterface : public Ipopt::TNLP {
    * nullptr) 2) The values of the hessian of the lagrangian (if "values" is not
    * nullptr)
    */
+  // 重载TNLP，设置二阶梯度海森矩阵
   bool eval_h(int n, const double *x, bool new_x, double obj_factor, int m,
               const double *lambda, bool new_lambda, int nele_hess, int *iRow,
               int *jCol, double *values) override;
@@ -122,6 +130,7 @@ class PiecewiseJerkSpeedNonlinearIpoptInterface : public Ipopt::TNLP {
   /** @name Solution Methods */
   /** This method is called when the algorithm is complete so the TNLP can
    * store/write the solution */
+  // 重载TNLP,储存求解的结果
   void finalize_solution(Ipopt::SolverReturn status, int n, const double *x,
                          const double *z_L, const double *z_U, int m,
                          const double *g, const double *lambda,

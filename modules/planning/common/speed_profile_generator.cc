@@ -106,9 +106,11 @@ SpeedData SpeedProfileGenerator::GenerateFallbackSpeed(
 
 void SpeedProfileGenerator::FillEnoughSpeedPoints(SpeedData* const speed_data) {
   const SpeedPoint& last_point = speed_data->back();
+  // default: FLAGS_fallback_total_time = 3.0
   if (last_point.t() >= FLAGS_fallback_total_time) {
     return;
   }
+  // default: FLAGS_fallback_time_unit = 0.1
   for (double t = last_point.t() + FLAGS_fallback_time_unit;
        t < FLAGS_fallback_total_time; t += FLAGS_fallback_time_unit) {
     speed_data->AppendSpeedPoint(last_point.s(), t, 0.0, 0.0, 0.0);

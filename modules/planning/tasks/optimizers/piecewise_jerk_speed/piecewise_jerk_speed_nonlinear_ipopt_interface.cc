@@ -52,17 +52,19 @@ PiecewiseJerkSpeedNonlinearIpoptInterface::
 bool PiecewiseJerkSpeedNonlinearIpoptInterface::get_nlp_info(
     int &n, int &m, int &nnz_jac_g, int &nnz_h_lag,
     IndexStyleEnum &index_style) {
+  // 优化变量为: s, s_dt, ds_ddt
   num_of_variables_ = num_of_points_ * 3;
 
   if (use_soft_safety_bound_) {
     // complementary slack variable for soft upper and lower s bound
+    // 增加两个松弛因子的约束: lower_slack_i, upper_slack_i
     num_of_variables_ += num_of_points_ * 2;
-
+    // 松弛变量上下边界约束在所有变量边界等式约束中的索引开始的位置
     lower_s_slack_offset_ = num_of_points_ * 3;
 
     upper_s_slack_offset_ = num_of_points_ * 4;
   }
-
+  // 优化变量个数
   n = num_of_variables_;
 
   // s monotone constraints s_i+1 - s_i >= 0.0
@@ -126,7 +128,7 @@ bool PiecewiseJerkSpeedNonlinearIpoptInterface::get_nlp_info(
     // s_i - soft_upper_s_i - upper_slack_i <= 0.0
     nnz_jac_g += num_of_points_ * 2;
   }
-
+  // 数目是怎么计算的？？？
   nnz_h_lag = num_of_points_ * 5 - 1;
 
   index_style = IndexStyleEnum::C_STYLE;
@@ -142,6 +144,7 @@ bool PiecewiseJerkSpeedNonlinearIpoptInterface::get_bounds_info(
 
   // bounds for variables
   // s
+  // 优化起点的等式约束
   x_l[0] = s_init_;
   x_u[0] = s_init_;
   for (int i = 1; i < num_of_points_; ++i) {
@@ -164,7 +167,7 @@ bool PiecewiseJerkSpeedNonlinearIpoptInterface::get_bounds_info(
     x_l[a_offset_ + i] = s_ddot_min_;
     x_u[a_offset_ + i] = s_ddot_max_;
   }
-
+  // 对两个松弛因子进行约束
   if (use_soft_safety_bound_) {
     // lower_s_slack
     for (int i = 0; i < num_of_points_; ++i) {
@@ -252,7 +255,7 @@ bool PiecewiseJerkSpeedNonlinearIpoptInterface::get_starting_point(
       x[a_offset_ + i] = x_warm_start_[i][2];
     }
   }
-
+  // 松弛因子的起点为0
   if (use_soft_safety_bound_) {
     for (int i = 0; i < num_of_points_; ++i) {
       x[lower_s_slack_offset_ + i] = 0.0;
@@ -390,7 +393,7 @@ bool PiecewiseJerkSpeedNonlinearIpoptInterface::eval_grad_f(int n,
     double s = x[i];
     double kappa = curvature_curve_.Evaluate(0, s);
     double kappa_dot = curvature_curve_.Evaluate(1, s);
-
+    // 曲率是s的函数，所以也需要对曲率求导
     grad_f[i] += 2.0 * w_overall_centripetal_acc_ * v4 * kappa * kappa_dot;
     grad_f[v_offset_ + i] +=
         4.0 * w_overall_centripetal_acc_ * v3 * kappa * kappa;
@@ -409,6 +412,7 @@ bool PiecewiseJerkSpeedNonlinearIpoptInterface::eval_grad_f(int n,
 
   if (use_soft_safety_bound_) {
     for (int i = 0; i < num_of_points_; ++i) {
+      // 松弛因子的cost项不是平方项吗？
       grad_f[lower_s_slack_offset_ + i] += w_soft_s_bound_;
       grad_f[upper_s_slack_offset_ + i] += w_soft_s_bound_;
     }
@@ -509,7 +513,8 @@ bool PiecewiseJerkSpeedNonlinearIpoptInterface::eval_jac_g(
   if (values == nullptr) {
     int non_zero_index = 0;
     int constraint_index = 0;
-
+    // row对应Jacobian矩阵中约束方程的位置
+    // col对应Jacobian矩阵中优化变量的位置
     // s monotone constraints s_i+1 - s_i
     for (int i = 0; i + 1 < num_of_points_; ++i) {
       // s_i
@@ -794,6 +799,7 @@ bool PiecewiseJerkSpeedNonlinearIpoptInterface::eval_h(
     for (int i = 0; i < nz_index; ++i) {
       int r = iRow[i];
       int c = jCol[i];
+      // std::unordered_map<int, int> hessian_mapper_
       hessian_mapper_[to_hash_key(r, c)] = i;
     }
 

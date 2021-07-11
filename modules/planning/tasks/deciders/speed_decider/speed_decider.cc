@@ -62,7 +62,7 @@ common::Status SpeedDecider::Execute(Frame* frame,
   }
   return Status::OK();
 }
-
+// 判断规划的st曲线和障碍物的相对关系：CROSS、BLOW、ABOVE
 SpeedDecider::STLocation SpeedDecider::GetSTLocation(
     const PathDecision* const path_decision, const SpeedData& speed_profile,
     const STBoundary& st_boundary) const {
@@ -116,7 +116,7 @@ SpeedDecider::STLocation SpeedDecider::GetSTLocation(
   }
   return st_location;
 }
-
+// 判断是否能穿越禁停区：如果路径终点在禁停区前并且车速很低，则不能穿过禁停区，否则穿过
 bool SpeedDecider::CheckKeepClearCrossable(
     const PathDecision* const path_decision, const SpeedData& speed_profile,
     const STBoundary& keep_clear_st_boundary) const {
@@ -144,7 +144,7 @@ bool SpeedDecider::CheckKeepClearCrossable(
   }
   return keep_clear_crossable;
 }
-
+// 判断禁停区是否拥堵：　禁停区前方半个adc车长前有block obstacle
 bool SpeedDecider::CheckKeepClearBlocked(
     const PathDecision* const path_decision,
     const Obstacle& keep_clear_obstacle) const {
@@ -183,6 +183,7 @@ bool SpeedDecider::IsFollowTooClose(const Obstacle& obstacle) const {
   if (obs_speed > ego_speed) {
     return false;
   }
+  // default: FLAGS_min_stop_distance_obstacle = 6.0
   const double distance =
       obstacle.path_st_boundary().min_s() - FLAGS_min_stop_distance_obstacle;
   static constexpr double lane_follow_max_decel = 3.0;
@@ -231,6 +232,7 @@ Status SpeedDecider::MakeObjectDecision(
     }
 
     // always STOP for pedestrian
+    // default: FLAGS_min_stop_distance_obstacle = 6.0
     if (CheckStopForPedestrian(*mutable_obstacle)) {
       ObjectDecisionType stop_decision;
       if (CreateStopDecision(*mutable_obstacle, &stop_decision,
@@ -484,6 +486,7 @@ bool SpeedDecider::CreateOvertakeDecision(
 
 bool SpeedDecider::CheckIsFollow(const Obstacle& obstacle,
                                  const STBoundary& boundary) const {
+  // default: FLAGS_follow_min_obs_lateral_distance = 2.5
   const double obstacle_l_distance =
       std::min(std::fabs(obstacle.PerceptionSLBoundary().start_l()),
                std::fabs(obstacle.PerceptionSLBoundary().end_l()));
@@ -504,6 +507,7 @@ bool SpeedDecider::CheckIsFollow(const Obstacle& obstacle,
   }
 
   // cross lane but be moving to different direction
+  // default: FLAGS_follow_min_time_sec = 2.0
   if (boundary.max_t() - boundary.min_t() < FLAGS_follow_min_time_sec) {
     return false;
   }
@@ -542,6 +546,7 @@ bool SpeedDecider::CheckStopForPedestrian(const Obstacle& obstacle) const {
   static constexpr double kPedestrianStopTimeout = 4.0;
 
   bool result = true;
+  // 对10m的静止4s的行人不做停车决策？？？？
   if (obstacle.path_st_boundary().min_s() < kSDistanceStartTimer) {
     const auto obstacle_speed = std::hypot(perception_obstacle.velocity().x(),
                                            perception_obstacle.velocity().y());

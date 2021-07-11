@@ -50,6 +50,7 @@ Status PathDecider::Process(const ReferenceLineInfo *reference_line_info,
                             const PathData &path_data,
                             PathDecision *const path_decision) {
   // skip path_decider if reused path
+  // default: FLAGS_enable_skip_path_tasks = false
   if (FLAGS_enable_skip_path_tasks && reference_line_info->path_reusable()) {
     return Status::OK();
   }
@@ -58,6 +59,10 @@ Status PathDecider::Process(const ReferenceLineInfo *reference_line_info,
   if (reference_line_info->GetBlockingObstacle() != nullptr) {
     blocking_obstacle_id = reference_line_info->GetBlockingObstacle()->Id();
   }
+  // 对静态障碍物添加决策信息
+  // 忽略已经有STOP和IGNORE决策的obstacle
+  // 在非借道工况下存在block obstacle，则STOP
+  // 如果静态障碍物与车辆碰撞，STOP，太近的话则NUDGE,太远的话就IGNORE
   if (!MakeObjectDecision(path_data, blocking_obstacle_id, path_decision)) {
     const std::string msg = "Failed to make decision based on tunnel";
     AERROR << msg;
@@ -92,6 +97,7 @@ bool PathDecider::MakeStaticObstacleDecision(
   }
   const double half_width =
       common::VehicleConfigHelper::GetConfig().vehicle_param().width() / 2.0;
+  // default: FLAGS_lateral_ignore_buffer = 3.0
   const double lateral_radius = half_width + FLAGS_lateral_ignore_buffer;
 
   // Go through every obstacle and make decisions.
@@ -152,6 +158,7 @@ bool PathDecider::MakeStaticObstacleDecision(
 
     const auto frenet_point = frenet_path.GetNearestPoint(sl_boundary);
     const double curr_l = frenet_point.l();
+    // default: static_obstacle_buffer = 0.3
     double min_nudge_l =
         half_width +
         config_.path_decider_config().static_obstacle_buffer() / 2.0;
@@ -179,6 +186,7 @@ bool PathDecider::MakeStaticObstacleDecision(
                                                obstacle->Id(), object_decision);
       }
     } else {
+      // 为什么路径规划结束后还进行NUDGE？？？？
       // 3. NUDGE if laterally very close.
       if (sl_boundary.end_l() < curr_l - min_nudge_l) {  // &&
         // sl_boundary.end_l() > curr_l - min_nudge_l - 0.3) {

@@ -77,18 +77,22 @@ Status PiecewiseJerkSpeedOptimizer::Process(const PathData& path_data,
                                                    init_s);
 
   const auto& config = config_.piecewise_jerk_speed_optimizer_config();
+  // default: acc_weight = 1.0
   piecewise_jerk_problem.set_weight_ddx(config.acc_weight());
+  // default: jerk_weight = 3.0
   piecewise_jerk_problem.set_weight_dddx(config.jerk_weight());
 
-  piecewise_jerk_problem.set_x_bounds(0.0, total_length);
+  piecewise_jerk_problem.set_x_bounds(0.0, total_length);  // 后面的程序会更新ｘ的bounds
+  // default: FLAGS_planning_upper_speed_limit = 31.3 m/s
   piecewise_jerk_problem.set_dx_bounds(
       0.0, std::fmax(FLAGS_planning_upper_speed_limit,
-                     st_graph_data.init_point().v()));
+                     st_graph_data.init_point().v()));     // 后面的程序会更新dx的bounds
   piecewise_jerk_problem.set_ddx_bounds(veh_param.max_deceleration(),
                                         veh_param.max_acceleration());
+  // default: FLAGS_longitudinal_jerk_lower_bound = -4.0, FLAGS_longitudinal_jerk_upper_bound = 2.0
   piecewise_jerk_problem.set_dddx_bound(FLAGS_longitudinal_jerk_lower_bound,
                                         FLAGS_longitudinal_jerk_upper_bound);
-
+  // default: ref_v_weight = 10.0
   piecewise_jerk_problem.set_dx_ref(config.ref_v_weight(),
                                     reference_line_info_->GetCruiseSpeed());
 
@@ -140,11 +144,15 @@ Status PiecewiseJerkSpeedOptimizer::Process(const PathData& path_data,
     double curr_t = i * delta_t;
     // get path_s
     SpeedPoint sp;
+    // DP过程计算的结果
     reference_speed_data.EvaluateByTime(curr_t, &sp);
     const double path_s = sp.s();
     x_ref.emplace_back(path_s);
     // get curvature
     PathPoint path_point = path_data.GetPathPointWithPathS(path_s);
+    // default: kappa_penalty_weight = 2000.0
+    // 对横向加速度进行约束
+    // 用DP的结果查询t时刻的曲率(t时刻的曲率本是不可知的)，将非线性约束转换为线性约束
     penalty_dx.push_back(std::fabs(path_point.kappa()) *
                          config.kappa_penalty_weight());
     // get v_upper_bound
@@ -153,6 +161,7 @@ Status PiecewiseJerkSpeedOptimizer::Process(const PathData& path_data,
     v_upper_bound = speed_limit.GetSpeedLimitByS(path_s);
     s_dot_bounds.emplace_back(v_lower_bound, std::fmax(v_upper_bound, 0.0));
   }
+  // default: ref_s_weight = 10.0
   piecewise_jerk_problem.set_x_ref(config.ref_s_weight(), std::move(x_ref));
   piecewise_jerk_problem.set_penalty_dx(penalty_dx);
   piecewise_jerk_problem.set_dx_bounds(std::move(s_dot_bounds));

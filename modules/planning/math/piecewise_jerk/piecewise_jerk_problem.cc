@@ -74,8 +74,8 @@ OSQPData* PiecewiseJerkProblem::FormulateProblem() {
   size_t kernel_dim = 3 * num_of_knots_;
   size_t num_affine_constraint = lower_bounds.size();
 
-  data->n = kernel_dim;
-  data->m = num_affine_constraint;
+  data->n = kernel_dim;              // 优化变量数目
+  data->m = num_affine_constraint;   // 约束条件数目
   data->P = csc_matrix(kernel_dim, kernel_dim, P_data.size(), CopyData(P_data),
                        CopyData(P_indices), CopyData(P_indptr));
   data->q = CopyData(q);
@@ -140,8 +140,18 @@ void PiecewiseJerkProblem::CalculateAffineConstraint(
   // 3N params bounds on x, x', x''
   // 3(N-1) constraints on x, x', x''
   // 3 constraints on x_init_
+  // 优化的离散点个数
   const int n = static_cast<int>(num_of_knots_);
+  // 优化变量个数: x, dx, ddx
   const int num_of_variables = 3 * n;
+  // 约束条件个数:
+  // 每个变量的上下边界约束: num_of_variables
+  /* 邻接变量的等式约束: 3 * (n-1)
+   * ddx_i = ddx_i-1 + dddx_i-1 * s
+   * dx_i = dx_i-1 + ddx_i-1 * s + dddx_i-1 * s^2 / 2
+   * x_i = x_i-1 + dx_i-1 * s + ddx_i-1 * s^2 / 2 + dddx_i-1 * s^3 / 6
+   */
+  // 起始条件约束数目: 3
   const int num_of_constraints = num_of_variables + 3 * (n - 1) + 3;
   lower_bounds->resize(num_of_constraints);
   upper_bounds->resize(num_of_constraints);
@@ -263,6 +273,7 @@ OSQPSettings* PiecewiseJerkProblem::SolverDefaultSettings() {
       reinterpret_cast<OSQPSettings*>(c_malloc(sizeof(OSQPSettings)));
   osqp_set_default_settings(settings);
   settings->polish = true;
+  // 默认配置: FLAGS_enable_osqp_debug = false
   settings->verbose = FLAGS_enable_osqp_debug;
   settings->scaled_termination = true;
   return settings;

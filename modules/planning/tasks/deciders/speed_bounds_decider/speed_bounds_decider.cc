@@ -62,7 +62,7 @@ Status SpeedBoundsDecider::Process(
       speed_bounds_config_, reference_line, path_data,
       path_data.discretized_path().Length(), speed_bounds_config_.total_time(),
       injector_);
-
+  // default: FLAGS_use_st_drivable_boundary = false
   if (!FLAGS_use_st_drivable_boundary) {
     path_decision->EraseStBoundaries();
   }
@@ -111,6 +111,7 @@ Status SpeedBoundsDecider::Process(
   const double path_data_length = path_data.discretized_path().Length();
 
   // 4. Get time duration as t axis search bound in st graph
+  // default: total_time = 7.0
   const double total_time_by_conf = speed_bounds_config_.total_time();
 
   // Load generated st graph data back to frame

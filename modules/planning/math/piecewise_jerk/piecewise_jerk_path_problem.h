@@ -45,7 +45,7 @@ namespace planning {
  * Given the x, x', x'' at P(start),  The goal is to find x0, x1, ... x(k-1)
  * which makes the line P(start), P0, P(1) ... P(k-1) "smooth".
  */
-
+// 将x_ref(i)、x(end)、dx(end)、ddx(end)做为软约束放入优化目标函数中
 class PiecewiseJerkPathProblem : public PiecewiseJerkProblem {
  public:
   PiecewiseJerkPathProblem(const size_t num_of_knots, const double delta_s,

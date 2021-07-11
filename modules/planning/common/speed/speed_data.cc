@@ -151,6 +151,7 @@ double SpeedData::TotalLength() const {
 }
 
 std::string SpeedData::DebugString() const {
+  // default: FLAGS_trajectory_point_num_for_debug = 10
   const auto limit = std::min(
       size(), static_cast<size_t>(FLAGS_trajectory_point_num_for_debug));
   return absl::StrCat(

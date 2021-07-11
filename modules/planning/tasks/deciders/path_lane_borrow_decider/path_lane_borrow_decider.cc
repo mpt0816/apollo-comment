@@ -44,6 +44,7 @@ Status PathLaneBorrowDecider::Process(
   CHECK_NOTNULL(reference_line_info);
 
   // skip path_lane_borrow_decider if reused path
+  // 默认配置 FLAGS_enable_skip_path_tasks = false
   if (FLAGS_enable_skip_path_tasks && reference_line_info->path_reusable()) {
     // for debug
     AINFO << "skip due to reusing path";
@@ -53,6 +54,7 @@ Status PathLaneBorrowDecider::Process(
   // By default, don't borrow any lane.
   reference_line_info->set_is_path_lane_borrow(false);
   // Check if lane-borrowing is needed, if so, borrow lane.
+  // 默认配置 allow_lane_borrowing = true 在LANE_FOLLOW场景中
   if (Decider::config_.path_lane_borrow_decider_config()
           .allow_lane_borrowing() &&
       IsNecessaryToBorrowLane(*frame, *reference_line_info)) {
@@ -80,23 +82,32 @@ bool PathLaneBorrowDecider::IsNecessaryToBorrowLane(
     ADEBUG << "Blocking obstacle ID["
            << mutable_path_decider_status->front_static_obstacle_id() << "]";
     // ADC requirements check for lane-borrowing:
+    // 必须只有一条参考线
     if (!HasSingleReferenceLine(frame)) {
       return false;
     }
+    // 规划起点的速度不能过高(v_init<5.0)
     if (!IsWithinSidePassingSpeedADC(frame)) {
       return false;
     }
 
     // Obstacle condition check for lane-borrowing:
+    // 堵塞的障碍物距离 SIGNAL或者STOP SIGN > 20m 或者 Junction > 15m 或者 没有堵塞的障碍物
     if (!IsBlockingObstacleFarFromIntersection(reference_line_info)) {
       return false;
     }
+    // 障碍物必须是长期堵塞道路(>3 cycle)
     if (!IsLongTermBlockingObstacle()) {
       return false;
     }
+    // 堵塞道路的障碍物必须不在终点附近 或者 没有堵塞障碍物
     if (!IsBlockingObstacleWithinDestination(reference_line_info)) {
       return false;
     }
+    // 必须有堵塞障碍物：
+    // 堵塞障碍物在ADC 35m内(距离太远则状态不确定，借道超车有风险) &&
+    // 堵塞障碍物是park状态 ||
+    // 堵塞障碍物在它前方15m内没有低速障碍物(在低速车流情况下等待)
     if (!IsSidePassableObstacle(reference_line_info)) {
       return false;
     }
@@ -138,10 +149,12 @@ bool PathLaneBorrowDecider::HasSingleReferenceLine(const Frame& frame) {
   return frame.reference_line_info().size() == 1;
 }
 
+// 默认配置 FLAGS_lane_borrow_max_speed = 5.0
 bool PathLaneBorrowDecider::IsWithinSidePassingSpeedADC(const Frame& frame) {
   return frame.PlanningStartPoint().v() < FLAGS_lane_borrow_max_speed;
 }
-
+ 
+// 默认配置 FLAGS_long_term_blocking_obstacle_cycle_threshold = 3
 bool PathLaneBorrowDecider::IsLongTermBlockingObstacle() {
   if (injector_->planning_context()
           ->planning_status()

@@ -54,6 +54,7 @@ apollo::common::Status RuleBasedStopDecider::Process(
   StopOnSidePass(frame, reference_line_info);
 
   // 2. Rule_based stop for urgent lane change
+  // default: FLAGS_enable_lane_change_urgency_checking = false
   if (FLAGS_enable_lane_change_urgency_checking) {
     CheckLaneChangeUrgency(frame);
   }
@@ -98,6 +99,7 @@ void RuleBasedStopDecider::CheckLaneChangeUrgency(Frame *const frame) {
       double distance_to_passage_end =
           sl_point.s() - reference_line_info.AdcSlBoundary().end_s();
       // If ADC is still far from the end of routing, no need to stop, skip
+      // proto default: approach_distance_for_lane_change = 10.0
       if (distance_to_passage_end >
           rule_based_stop_decider_config_.approach_distance_for_lane_change()) {
         continue;
@@ -117,6 +119,7 @@ void RuleBasedStopDecider::CheckLaneChangeUrgency(Frame *const frame) {
 
 void RuleBasedStopDecider::AddPathEndStop(
     Frame *const frame, ReferenceLineInfo *const reference_line_info) {
+  // default: FLAGS_short_path_length_threshold = 20.0
   if (!reference_line_info->path_data().path_label().empty() &&
       reference_line_info->path_data().frenet_frame_path().back().s() -
               reference_line_info->path_data().frenet_frame_path().front().s() <
@@ -147,19 +150,20 @@ void RuleBasedStopDecider::StopOnSidePass(
   }
 
   if (check_clear &&
+      // 判断adc是否超过了换道停止点，并且车辆是否在lane内
       CheckClearDone(*reference_line_info, change_lane_stop_path_point)) {
     check_clear = false;
   }
-
+      // 计算从IN_LANE到OUT_ON_REVERSE_LANE的点
   if (!check_clear &&
       CheckSidePassStop(path_data, *reference_line_info, &stop_s_on_pathdata)) {
     if (!LaneChangeDecider::IsPerceptionBlocked(
             *reference_line_info,
-            rule_based_stop_decider_config_.search_beam_length(),
-            rule_based_stop_decider_config_.search_beam_radius_intensity(),
-            rule_based_stop_decider_config_.search_range(),
-            rule_based_stop_decider_config_.is_block_angle_threshold()) &&
-        LaneChangeDecider::IsClearToChangeLane(reference_line_info)) {
+            rule_based_stop_decider_config_.search_beam_length(),            // 20.0
+            rule_based_stop_decider_config_.search_beam_radius_intensity(),  // 0.08
+            rule_based_stop_decider_config_.search_range(),                  // 3.14
+            rule_based_stop_decider_config_.is_block_angle_threshold()) &&   // 0.5
+        LaneChangeDecider::IsClearToChangeLane(reference_line_info)) {  // 根据adc和obstacle速度预估是否有足够的换道空间
       return;
     }
     if (!CheckADCStop(path_data, *reference_line_info, stop_s_on_pathdata)) {
@@ -177,6 +181,7 @@ void RuleBasedStopDecider::StopOnSidePass(
 }
 
 // @brief Check if necessary to set stop fence used for nonscenario side pass
+// 由IN_LANE到OUT_ON_REVERSE_LANE的点
 bool RuleBasedStopDecider::CheckSidePassStop(
     const PathData &path_data, const ReferenceLineInfo &reference_line_info,
     double *stop_s_on_pathdata) {
@@ -246,6 +251,7 @@ bool RuleBasedStopDecider::BuildSidePassStopFence(
 }
 
 // @brief Check if ADV stop at a stop fence
+// adc速度>0.5 || adc到停车线距离>1.0，不停
 bool RuleBasedStopDecider::CheckADCStop(
     const PathData &path_data, const ReferenceLineInfo &reference_line_info,
     const double stop_s_on_pathdata) {
@@ -256,6 +262,7 @@ bool RuleBasedStopDecider::CheckADCStop(
   }
 
   const double adc_speed = injector_->vehicle_state()->linear_velocity();
+  // default: max_adc_stop_speed = 0.5
   if (adc_speed > rule_based_stop_decider_config_.max_adc_stop_speed()) {
     ADEBUG << "ADC not stopped: speed[" << adc_speed << "]";
     return false;
@@ -271,7 +278,7 @@ bool RuleBasedStopDecider::CheckADCStop(
 
   const double distance_stop_line_to_adc_front_edge =
       stop_point_s - adc_front_edge_s;
-
+  // default: max_valid_stop_distance = 1.0
   if (distance_stop_line_to_adc_front_edge >
       rule_based_stop_decider_config_.max_valid_stop_distance()) {
     ADEBUG << "not a valid stop. too far from stop line.";

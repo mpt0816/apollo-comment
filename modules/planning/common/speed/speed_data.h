@@ -27,6 +27,17 @@
 namespace apollo {
 namespace planning {
 
+  // message SpeedPoint {
+  // optional double s = 1;
+  // optional double t = 2;
+  // // speed (m/s)
+  // optional double v = 3;
+  // // acceleration (m/s^2)
+  // optional double a = 4;
+  // // jerk (m/s^3)
+  // optional double da = 5;
+  // }
+
 class SpeedData : public std::vector<common::SpeedPoint> {
  public:
   SpeedData() = default;

@@ -56,13 +56,15 @@ double StGapEstimator::EstimateProperOvertakingGap(
 
 // TODO(Jinyun): add more variables to follow gap calculation
 double StGapEstimator::EstimateProperFollowingGap(const double adc_speed) {
+  // default: FLAGS_follow_time_buffer = 2.5
+  // default: FLAGS_follow_min_distance = 3.0
   return std::fmax(adc_speed * FLAGS_follow_time_buffer,
                    FLAGS_follow_min_distance);
 }
 
 // TODO(Jinyun): add more variables to yielding gap calculation
 double StGapEstimator::EstimateProperYieldingGap() {
-  return FLAGS_yield_distance;
+  return FLAGS_yield_distance; // default: 5.0
 }
 
 }  // namespace planning

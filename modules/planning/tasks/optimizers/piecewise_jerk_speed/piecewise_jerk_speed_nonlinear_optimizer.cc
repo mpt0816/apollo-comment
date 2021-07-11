@@ -84,7 +84,7 @@ Status PiecewiseJerkSpeedNonlinearOptimizer::Process(
   std::vector<double> acceleration;
 
   const auto qp_start = std::chrono::system_clock::now();
-
+  // 不考虑曲率约束进行QP求解
   const auto qp_smooth_status =
       OptimizeByQP(speed_data, &distance, &velocity, &acceleration);
 
@@ -101,7 +101,7 @@ Status PiecewiseJerkSpeedNonlinearOptimizer::Process(
 
   if (speed_limit_check_status) {
     const auto curvature_smooth_start = std::chrono::system_clock::now();
-
+    // 使用QP对曲率进行平滑，得到kappa = f(s)
     const auto path_curvature_smooth_status = SmoothPathCurvature(path_data);
 
     const auto curvature_smooth_end = std::chrono::system_clock::now();
@@ -116,7 +116,7 @@ Status PiecewiseJerkSpeedNonlinearOptimizer::Process(
     }
 
     const auto speed_limit_smooth_start = std::chrono::system_clock::now();
-
+    // 使用QP对速度限制进行平滑，得到speed_limit = f(s)
     const auto speed_limit_smooth_status = SmoothSpeedLimit();
 
     const auto speed_limit_smooth_end = std::chrono::system_clock::now();
@@ -205,10 +205,12 @@ Status PiecewiseJerkSpeedNonlinearOptimizer::SetUpStatesAndBounds(
   // Set s_dddot boundary
   // TODO(Jinyun): allow the setting of jerk_lower_bound and move jerk config to
   // a better place
+  // default: FLAGS_longitudinal_jerk_lower_bound = -4.0; FLAGS_longitudinal_jerk_upper_bound = 2.0
   s_dddot_min_ = -std::abs(FLAGS_longitudinal_jerk_lower_bound);
   s_dddot_max_ = FLAGS_longitudinal_jerk_upper_bound;
 
   // Set s boundary
+  // default: FLAGS_use_soft_bound_in_nonlinear_speed_opt = true
   if (FLAGS_use_soft_bound_in_nonlinear_speed_opt) {
     s_bounds_.clear();
     s_soft_bounds_.clear();
@@ -233,6 +235,7 @@ Status PiecewiseJerkSpeedNonlinearOptimizer::SetUpStatesAndBounds(
             s_soft_upper_bound = std::fmin(s_soft_upper_bound, s_upper);
             break;
           case STBoundary::BoundaryType::FOLLOW:
+            // default: FLAGS_follow_min_distance = 3.0
             s_upper_bound =
                 std::fmin(s_upper_bound, s_upper - FLAGS_follow_min_distance);
             if (!speed_data.EvaluateByTime(curr_t, &sp)) {
@@ -241,6 +244,7 @@ Status PiecewiseJerkSpeedNonlinearOptimizer::SetUpStatesAndBounds(
               AERROR << msg;
               return Status(ErrorCode::PLANNING_ERROR, msg);
             }
+            // default: FLAGS_follow_time_buffer = 2.5
             s_soft_upper_bound =
                 std::fmin(s_soft_upper_bound,
                           s_upper - FLAGS_follow_min_distance -
@@ -444,8 +448,8 @@ Status PiecewiseJerkSpeedNonlinearOptimizer::OptimizeByQP(
       config_.piecewise_jerk_nonlinear_speed_optimizer_config();
   piecewise_jerk_problem.set_weight_x(0.0);
   piecewise_jerk_problem.set_weight_dx(0.0);
-  piecewise_jerk_problem.set_weight_ddx(config.acc_weight());
-  piecewise_jerk_problem.set_weight_dddx(config.jerk_weight());
+  piecewise_jerk_problem.set_weight_ddx(config.acc_weight());   // default: 2.0
+  piecewise_jerk_problem.set_weight_dddx(config.jerk_weight()); // default: 3.0
 
   std::vector<double> x_ref;
   for (int i = 0; i < num_of_knots_; ++i) {
@@ -455,6 +459,7 @@ Status PiecewiseJerkSpeedNonlinearOptimizer::OptimizeByQP(
     speed_data->EvaluateByTime(curr_t, &sp);
     x_ref.emplace_back(sp.s());
   }
+  // default: ref_s_weight = 100.0
   piecewise_jerk_problem.set_x_ref(config.ref_s_weight(), std::move(x_ref));
 
   // Solve the problem
@@ -495,6 +500,7 @@ Status PiecewiseJerkSpeedNonlinearOptimizer::OptimizeByNLP(
   ptr_interface->set_speed_limit_curve(smoothed_speed_limit_);
 
   // TODO(Jinyun): refactor warms start setting API
+  // default: use_warm_start = true
   if (config.use_warm_start()) {
     const auto& warm_start_distance = *distance;
     const auto& warm_start_velocity = *velocity;
@@ -517,7 +523,8 @@ Status PiecewiseJerkSpeedNonlinearOptimizer::OptimizeByNLP(
     }
     ptr_interface->set_warm_start(warm_start);
   }
-
+  // default: FLAGS_use_smoothed_dp_guide_line = false
+  // True to penalize speed optimization result to be close to dp guide line
   if (FLAGS_use_smoothed_dp_guide_line) {
     ptr_interface->set_reference_spatial_distance(*distance);
     // TODO(Jinyun): move to confs
@@ -525,21 +532,23 @@ Status PiecewiseJerkSpeedNonlinearOptimizer::OptimizeByNLP(
   } else {
     std::vector<double> spatial_potantial(num_of_knots_, total_length_);
     ptr_interface->set_reference_spatial_distance(spatial_potantial);
+    // default: s_potential_weight = 0.05
     ptr_interface->set_w_reference_spatial_distance(
         config.s_potential_weight());
   }
-
+  // dafault: FLAGS_use_soft_bound_in_nonlinear_speed_opt = true
   if (FLAGS_use_soft_bound_in_nonlinear_speed_opt) {
     ptr_interface->set_soft_safety_bounds(s_soft_bounds_);
+    // default: soft_s_bound_weight = 1e6
     ptr_interface->set_w_soft_s_bound(config.soft_s_bound_weight());
   }
 
-  ptr_interface->set_w_overall_a(config.acc_weight());
-  ptr_interface->set_w_overall_j(config.jerk_weight());
-  ptr_interface->set_w_overall_centripetal_acc(config.lat_acc_weight());
+  ptr_interface->set_w_overall_a(config.acc_weight());    // default: 2.0
+  ptr_interface->set_w_overall_j(config.jerk_weight());   // default: 3.0
+  ptr_interface->set_w_overall_centripetal_acc(config.lat_acc_weight());  // default: 1000.0
 
   ptr_interface->set_reference_speed(cruise_speed_);
-  ptr_interface->set_w_reference_speed(config.ref_v_weight());
+  ptr_interface->set_w_reference_speed(config.ref_v_weight());  // default: 5.0
 
   Ipopt::SmartPtr<Ipopt::TNLP> problem = ptr_interface;
   Ipopt::SmartPtr<Ipopt::IpoptApplication> app = IpoptApplicationFactory();
