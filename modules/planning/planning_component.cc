@@ -40,17 +40,18 @@ using apollo::storytelling::Stories;
 
 bool PlanningComponent::Init() {
   injector_ = std::make_shared<DependencyInjector>();
-
+  // default: FLAGS_use_navigation_mode = false
   if (FLAGS_use_navigation_mode) {
     planning_base_ = std::make_unique<NaviPlanning>(injector_);
   } else {
+    // 在显式构造时planner_dispatcher_指向OnLanePlannerDispatcher
     planning_base_ = std::make_unique<OnLanePlanning>(injector_);
   }
 
   ACHECK(ComponentBase::GetProtoConfig(&config_))
       << "failed to load planning config file "
       << ComponentBase::ConfigFilePath();
-
+  // default: FLAGS_planning_offline_learning = false
   if (FLAGS_planning_offline_learning ||
       config_.learning_mode() != PlanningConfig::NO_LEARNING) {
     if (!message_process_.Init(config_, injector_)) {
@@ -157,7 +158,7 @@ bool PlanningComponent::Proc(
     AERROR << "Input check failed";
     return false;
   }
-
+  // default: learning_mode = NO_LEARNING
   if (config_.learning_mode() != PlanningConfig::NO_LEARNING) {
     // data process for online training
     message_process_.OnChassis(*local_view_.chassis);
@@ -186,6 +187,7 @@ bool PlanningComponent::Proc(
   }
 
   ADCTrajectory adc_trajectory_pb;
+  // 根据默认配置，调用OnLanePlannerDispatcher::RunOnce
   planning_base_->RunOnce(local_view_, &adc_trajectory_pb);
   common::util::FillHeader(node_->Name(), &adc_trajectory_pb);
 

@@ -120,6 +120,7 @@ class VehicleConfigHelper {
  private:
   static VehicleConfig vehicle_config_;
   static bool is_init_;
+  // 设计模式： 单例
   DECLARE_SINGLETON(VehicleConfigHelper)
 };
 

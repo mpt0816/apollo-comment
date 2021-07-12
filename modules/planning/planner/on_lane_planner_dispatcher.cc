@@ -26,6 +26,7 @@ namespace planning {
 std::unique_ptr<Planner> OnLanePlannerDispatcher::DispatchPlanner(
     const PlanningConfig& planning_config,
     const std::shared_ptr<DependencyInjector>& injector) {
+  // default: planner_type(0) = PUBLIC_ROAD
   return planner_factory_.CreateObject(
       planning_config.standard_planning_config().planner_type(0), injector);
 }

@@ -29,7 +29,8 @@ VehicleConfig VehicleConfigHelper::vehicle_config_;
 bool VehicleConfigHelper::is_init_ = false;
 
 VehicleConfigHelper::VehicleConfigHelper() {}
-
+// default: FLAGS_vehicle_config_path = 
+// "/apollo/modules/common/data/vehicle_param.pb.txt" 
 void VehicleConfigHelper::Init() { Init(FLAGS_vehicle_config_path); }
 
 void VehicleConfigHelper::Init(const std::string &config_file) {

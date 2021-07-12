@@ -81,11 +81,11 @@ Status OnLanePlanning::Init(const PlanningConfig& config) {
     return Status(ErrorCode::PLANNING_ERROR,
                   "planning config error: " + config_.DebugString());
   }
-
+  // task配置载参
   PlanningBase::Init(config_);
-
+  // 规划分配器初始化，RTK、PUBLIC_ROAD、LATTICE、NAVI注册
   planner_dispatcher_->Init();
-
+  // default: FLAGS_traffic_rule_config_filename = "/apollo/modules/planning/conf/traffic_rule_config.pb.txt"
   ACHECK(apollo::cyber::common::GetProtoFromFile(
       FLAGS_traffic_rule_config_filename, &traffic_rule_configs_))
       << "Failed to load traffic rule config file "
@@ -95,9 +95,11 @@ Status OnLanePlanning::Init(const PlanningConfig& config) {
   injector_->history()->Clear();
 
   // clear planning status
+  // 重置规划器中的全局状态信息
   injector_->planning_context()->mutable_planning_status()->Clear();
 
   // load map
+  // 使用绝对坐标，通过地图设计的单例模式得到高精地图的API
   hdmap_ = HDMapUtil::BaseMapPtr();
   ACHECK(hdmap_) << "Failed to load map";
 
@@ -107,13 +109,21 @@ Status OnLanePlanning::Init(const PlanningConfig& config) {
   reference_line_provider_->Start();
 
   // dispatch planner
+  // 在OnLanePlanning的构造时planner_dispatcher_指向OnLanePlannerDispatcher
+  // if (FLAGS_use_navigation_mode) {
+  //   planning_base_ = std::make_unique<NaviPlanning>(injector_);
+  // } else {
+  //   planning_base_ = std::make_unique<OnLanePlanning>(injector_);
+  // }
+  // 根据默认配置palnner_指向PublicRoadPlanner
   planner_ = planner_dispatcher_->DispatchPlanner(config_, injector_);
   if (!planner_) {
     return Status(
         ErrorCode::PLANNING_ERROR,
         "planning is not initialized with config : " + config_.DebugString());
   }
-
+  // default: FLAGS_planning_birdview_img_feature_renderer_config_file = 
+  // "/apollo/modules/planning/conf/planning_semantic_map_config.pb.txt"
   if (config_.learning_mode() != PlanningConfig::NO_LEARNING) {
     PlanningSemanticMapConfig renderer_config;
     ACHECK(apollo::cyber::common::GetProtoFromFile(
@@ -126,6 +136,7 @@ Status OnLanePlanning::Init(const PlanningConfig& config) {
   }
 
   start_time_ = Clock::NowInSeconds();
+  // 场景管理器进行载参
   return planner_->Init(config_);
 }
 

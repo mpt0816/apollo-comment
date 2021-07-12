@@ -39,6 +39,7 @@ namespace planning {
  */
 class OnLanePlanning : public PlanningBase {
  public:
+  // 在显式构造时planner_dispatcher_指向OnLanePlannerDispatcher
   explicit OnLanePlanning(const std::shared_ptr<DependencyInjector>& injector)
       : PlanningBase(injector) {
     planner_dispatcher_ = std::make_unique<OnLanePlannerDispatcher>();
