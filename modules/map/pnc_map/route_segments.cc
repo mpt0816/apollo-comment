@@ -338,6 +338,7 @@ bool RouteSegments::CanDriveFrom(const LaneWaypoint &waypoint) const {
     return false;
   }
   static constexpr double kMaxLaneWidth = 10.0;
+  // 不能跨车道
   if (std::fabs(route_sl.l()) > 2 * kMaxLaneWidth) {
     return false;
   }
@@ -365,6 +366,7 @@ bool RouteSegments::CanDriveFrom(const LaneWaypoint &waypoint) const {
       segment_waypoint.lane->GetSmoothPoint(segment_waypoint.s);
   double dist = common::util::DistanceXY(point, segment_projected_point);
   const double kLaneSeparationDistance = 0.3;
+  // 不能跨车道
   if (route_sl.l() < 0) {  // waypoint at right side
     if (dist >
         waypoint_left_width + segment_right_width + kLaneSeparationDistance) {

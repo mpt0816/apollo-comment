@@ -87,7 +87,7 @@ struct LaneSegment {
 
   std::string DebugString() const;
 };
-
+// 车道交叉覆盖区域
 struct PathOverlap {
   PathOverlap() = default;
   PathOverlap(std::string object_id, const double start_s, const double end_s)
@@ -100,6 +100,10 @@ struct PathOverlap {
   std::string DebugString() const;
 };
 
+  // class Vec2d {
+  //   double x_ = 0.0;
+  //   double y_ = 0.0;
+  // }
 class MapPathPoint : public common::math::Vec2d {
  public:
   MapPathPoint() = default;
@@ -350,33 +354,44 @@ class Path {
   int num_points_ = 0;
   int num_segments_ = 0;
   std::vector<MapPathPoint> path_points_;
+  // MapPathPoint两两构成一个LaneSegment2d，但必须保证起点和终点所属车道id一致，最后经过拼接Join可以重构RouteSegments
   std::vector<LaneSegment> lane_segments_;
   std::vector<double> lane_accumulated_s_;
+  // MapPathPoint两两构成一个LaneSegment2d，允许起点和终点车道不一致，用于后期路径采样时平滑插值
   std::vector<LaneSegment> lane_segments_to_next_point_;
-  std::vector<common::math::Vec2d> unit_directions_;
-  double length_ = 0.0;
-  std::vector<double> accumulated_s_;
-  std::vector<common::math::LineSegment2d> segments_;
+  std::vector<common::math::Vec2d> unit_directions_;   // segments_中每个LaneSegment2d的方向，段终点-段起点，正则化长度1
+  double length_ = 0.0;                                // 路径总长度
+  std::vector<double> accumulated_s_;                  // 每个MapPathPoint的累积距离
+  std::vector<common::math::LineSegment2d> segments_;  // MapPathPoint两两构成一个LineSegment2d
   bool use_path_approximation_ = false;
   PathApproximation approximation_;
 
   // Sampled every fixed length.
   int num_sample_points_ = 0;
-  std::vector<double> lane_left_width_;
-  std::vector<double> lane_right_width_;
+  std::vector<double> lane_left_width_;  // 每个采样点距离左车道边界距离
+  std::vector<double> lane_right_width_; // 每个采样点距离右车道边界距离
   std::vector<double> road_left_width_;
   std::vector<double> road_right_width_;
-  std::vector<int> last_point_index_;
+  std::vector<int> last_point_index_; //记录每个采样点累积距离s对应的上界MapPathPoint，上界s+下届s可以平滑得到采样点坐标
 
+  // 车道交叉覆盖区域，元素形式{id, start_s, end_s}，由start_s从小到大排列，即距离主车最近的覆盖区域最靠前存储
   std::vector<PathOverlap> lane_overlaps_;
+  // 信号灯覆盖区域，元素形式{id, start_s, end_s}，由start_s从小到大排列，即距离主车最近的覆盖区域最靠前存储
   std::vector<PathOverlap> signal_overlaps_;
+  // 让行区覆盖区域，元素形式{id, start_s, end_s}，由start_s从小到大排列，即距离主车最近的覆盖区域最靠前存储
   std::vector<PathOverlap> yield_sign_overlaps_;
+  // 停车等待覆盖区域，元素形式{id, start_s, end_s}，由start_s从小到大排列，即距离主车最近的覆盖区域最靠前存储
   std::vector<PathOverlap> stop_sign_overlaps_;
+  // 人行道覆盖区域，元素形式{id, start_s, end_s}，由start_s从小到大排列，即距离主车最近的覆盖区域最靠前存储
   std::vector<PathOverlap> crosswalk_overlaps_;
+  // 停车区域覆盖区域，元素形式{id, start_s, end_s}，由start_s从小到大排列，即距离主车最近的覆盖区域最靠前存储
   std::vector<PathOverlap> parking_space_overlaps_;
+  // 路口覆盖区域，元素形式{id, start_s, end_s}，由start_s从小到大排列，即距离主车最近的覆盖区域最靠前存储
   std::vector<PathOverlap> junction_overlaps_;
   std::vector<PathOverlap> pnc_junction_overlaps_;
+  // 禁停区覆盖区域，元素形式{id, start_s, end_s}，由start_s从小到大排列，即距离主车最近的覆盖区域最靠前存储
   std::vector<PathOverlap> clear_area_overlaps_;
+  // 减速带覆盖区域，元素形式{id, start_s, end_s}，由start_s从小到大排列，即距离主车最近的覆盖区域最靠前存储
   std::vector<PathOverlap> speed_bump_overlaps_;
 };
 

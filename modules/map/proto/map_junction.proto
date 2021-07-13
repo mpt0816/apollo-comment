@@ -4,7 +4,7 @@ package apollo.hdmap;
 
 import "modules/map/proto/map_id.proto";
 import "modules/map/proto/map_geometry.proto";
-
+// 两条或者两条以上道路的交叉口
 // A junction is the junction at-grade of two or more roads crossing.
 message Junction {
   optional Id id = 1;

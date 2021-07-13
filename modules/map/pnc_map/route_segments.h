@@ -47,6 +47,12 @@ namespace hdmap {
  * This class contains the original data that can be used to generate
  * hdmap::Path.
  **/
+
+// struct LaneSegment {
+//   LaneInfoConstPtr lane = nullptr;
+//   double start_s = 0.0;
+//   double end_s = 0.0;
+// };
 class RouteSegments : public std::vector<LaneSegment> {
  public:
   /**

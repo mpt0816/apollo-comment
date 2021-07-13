@@ -76,7 +76,7 @@ LaneBoundaryType::Type LeftBoundaryType(const LaneWaypoint& waypoint) {
   for (const auto& type :
        waypoint.lane->lane().left_boundary().boundary_type()) {
     if (type.s() <= waypoint.s) {
-      if (type.types_size() > 0) {
+      if (type.types_size() > 0) {  // 支持多类型，返回第一个类型
         return type.types(0);
       } else {
         return LaneBoundaryType::UNKNOWN;
@@ -111,6 +111,7 @@ LaneWaypoint LeftNeighborWaypoint(const LaneWaypoint& waypoint) {
   auto point = waypoint.lane->GetSmoothPoint(waypoint.s);
   auto map_ptr = HDMapUtil::BaseMapPtr();
   CHECK_NOTNULL(map_ptr);
+  // 可计算的最近的邻接车道
   for (const auto& lane_id :
        waypoint.lane->lane().left_neighbor_forward_lane_id()) {
     auto lane = map_ptr->GetLaneById(lane_id);
@@ -131,13 +132,14 @@ LaneWaypoint LeftNeighborWaypoint(const LaneWaypoint& waypoint) {
   }
   return neighbor;
 }
-
+// 合并相邻的有相同id的lane segment
 void LaneSegment::Join(std::vector<LaneSegment>* segments) {
   static constexpr double kSegmentDelta = 0.5;
   std::size_t k = 0;
   std::size_t i = 0;
   while (i < segments->size()) {
     std::size_t j = i;
+    // 跳过同一个lane的情况
     while (j + 1 < segments->size() &&
            segments->at(i).lane == segments->at(j + 1).lane) {
       ++j;
@@ -441,6 +443,7 @@ void Path::InitWidth() {
   for (int i = 0; i < num_sample_points_; ++i) {
     const MapPathPoint point = GetSmoothPoint(s);
     if (point.lane_waypoints().empty()) {
+      // 采用标准的车道宽带
       lane_left_width_.push_back(FLAGS_default_lane_width / 2.0);
       lane_right_width_.push_back(FLAGS_default_lane_width / 2.0);
 

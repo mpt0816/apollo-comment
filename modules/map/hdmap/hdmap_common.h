@@ -189,7 +189,7 @@ class LaneInfo {
     return pnc_junctions_;
   }
   double total_length() const { return total_length_; }
-  using SampledWidth = std::pair<double, double>;
+  using SampledWidth = std::pair<double, double>;  // s-width ?
   const std::vector<SampledWidth> &sampled_left_width() const {
     return sampled_left_width_;
   }
@@ -251,9 +251,9 @@ class LaneInfo {
   std::vector<OverlapInfoConstPtr> crosswalks_;
   std::vector<OverlapInfoConstPtr> junctions_;
   std::vector<OverlapInfoConstPtr> clear_areas_;
-  std::vector<OverlapInfoConstPtr> speed_bumps_;
+  std::vector<OverlapInfoConstPtr> speed_bumps_;    // 减速带
   std::vector<OverlapInfoConstPtr> parking_spaces_;
-  std::vector<OverlapInfoConstPtr> pnc_junctions_;
+  std::vector<OverlapInfoConstPtr> pnc_junctions_;  // 什么玩意？
   double total_length_ = 0.0;
   std::vector<SampledWidth> sampled_left_width_;
   std::vector<SampledWidth> sampled_right_width_;

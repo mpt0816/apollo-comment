@@ -371,6 +371,7 @@ bool ReferenceLineProvider::GetReferenceLinesFromRelativeMap(
   // 2.get the higher priority lane info list which priority higher
   // than current lane and get the highest one as the target lane
   using LaneIdPair = std::pair<std::string, uint32_t>;
+  // 选出所有比adc所在车道优先级高的车道
   std::vector<LaneIdPair> high_priority_lane_pairs;
   ADEBUG << "relative_map_->navigation_path_size = "
          << relative_map_->navigation_path_size();
