@@ -122,6 +122,7 @@ class Spline2dConstraint {
   AffineConstraint equality_constraint_;
   std::vector<double> t_knots_;
   uint32_t spline_order_;
+  // 优化变量的个数
   uint32_t total_param_;
 };
 

@@ -70,6 +70,10 @@ bool Spline2dConstraint::Add2dBoundary(
       lateral_bound.size() != longitudinal_bound.size()) {
     return false;
   }
+  // 不等式约束: f_xi <= xi_up
+  //          -f_xi <= -xi_low
+  //           g_yi <= yi_up
+  //          -g_yi <= -yi_low
   Eigen::MatrixXd affine_inequality =
       Eigen::MatrixXd::Zero(4 * t_coord.size(), total_param_);
   Eigen::MatrixXd affine_boundary =
@@ -80,6 +84,7 @@ bool Spline2dConstraint::Add2dBoundary(
         SignDistance(ref_point[i], angle[i] - M_PI / 2.0);
     const uint32_t index = FindIndex(t_coord[i]);
     const double rel_t = t_coord[i] - t_knots_[index];
+    // spline_order_是多项式的阶次
     const uint32_t index_offset = 2 * index * (spline_order_ + 1);
     std::vector<double> longi_coef = AffineCoef(angle[i], rel_t);
     std::vector<double> longitudinal_coef =
@@ -275,6 +280,7 @@ bool Spline2dConstraint::AddPointKthOrderDerivativeConstraint(
   return AddEqualityConstraint(affine_equality, affine_boundary);
 }
 
+// 对起点的切线方向进行约束，等式约束个数为1个，不等式约束个数为2个
 bool Spline2dConstraint::AddPointAngleConstraint(const double t,
                                                  const double angle) {
   const uint32_t index = FindIndex(t);
@@ -301,11 +307,11 @@ bool Spline2dConstraint::AddPointAngleConstraint(const double t,
   if (normalized_angle < 0) {
     normalized_angle += M_PI * 2;
   }
-
+  // cos(theta) 的符号
   if (normalized_angle > (M_PI / 2) && normalized_angle < (M_PI * 1.5)) {
     x_sign = -1;
   }
-
+  // sin(theta) 的符号
   if (normalized_angle >= M_PI) {
     y_sign = -1;
   }
@@ -317,6 +323,7 @@ bool Spline2dConstraint::AddPointAngleConstraint(const double t,
   if (!AddEqualityConstraint(affine_equality, affine_boundary)) {
     return false;
   }
+  // 不等于0的约束怎么给？？？
   return AddInequalityConstraint(affine_inequality, affine_inequality_boundary);
 }
 
@@ -381,6 +388,7 @@ bool Spline2dConstraint::AddSecondDerivativeSmoothConstraint() {
   if (t_knots_.size() < 3) {
     return true;
   }
+  // 第一个点和最后一个点没有二阶微分连续的约束，只有两段线段中间的点有二阶微分连续约束
   Eigen::MatrixXd affine_equality =
       Eigen::MatrixXd::Zero(6 * (t_knots_.size() - 2), total_param_);
   Eigen::MatrixXd affine_boundary =
@@ -539,6 +547,7 @@ double Spline2dConstraint::SignDistance(const Vec2d& xy_point,
       common::math::cos(common::math::Angle16::from_rad(angle)));
 }
 
+// return: <1, t, t^2, t^3, ..., t^5>
 std::vector<double> Spline2dConstraint::PolyCoef(const double t) const {
   std::vector<double> result(spline_order_ + 1, 1.0);
   for (uint32_t i = 1; i < result.size(); ++i) {
@@ -547,6 +556,7 @@ std::vector<double> Spline2dConstraint::PolyCoef(const double t) const {
   return result;
 }
 
+// return: <0, 1, 2t, 3t^2, 4t^3, 5t^4>
 std::vector<double> Spline2dConstraint::DerivativeCoef(const double t) const {
   std::vector<double> result(spline_order_ + 1, 0.0);
   std::vector<double> power_t = PolyCoef(t);

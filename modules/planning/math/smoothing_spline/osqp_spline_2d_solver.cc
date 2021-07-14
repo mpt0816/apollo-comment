@@ -141,6 +141,8 @@ bool OsqpSpline2dSolver::Solve() {
   settings->eps_rel = 1.0e-05;
   settings->max_iter = 5000;
   settings->polish = true;
+  // default: FLAGS_enable_osqp_debug = false
+  // True to turn on OSQP verbose debug output in log.
   settings->verbose = FLAGS_enable_osqp_debug;
 
   // Setup workspace

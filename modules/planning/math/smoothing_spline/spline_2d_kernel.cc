@@ -29,12 +29,17 @@ namespace planning {
 
 using apollo::common::math::Vec2d;
 
+// J = f`i^2(s) + f``i^2(s) + g`i^2(s) + g``i^2(s)
+
 Spline2dKernel::Spline2dKernel(const std::vector<double>& t_knots,
                                const uint32_t spline_order)
     : t_knots_(t_knots), spline_order_(spline_order) {
+  // 优化变量的个数: 每段多项式的系数个数是: 1 + spline_order_
+  // 一共有t_knots_.size() - 1段线段，每个线段的x，y分别是关于t的多项式
   total_params_ =
       (t_knots_.size() > 1 ? 2 * (t_knots_.size() - 1) * (1 + spline_order_)
                            : 0);
+  // 初始化为元素为0的矩阵
   kernel_matrix_ = Eigen::MatrixXd::Zero(total_params_, total_params_);
   offset_ = Eigen::MatrixXd::Zero(total_params_, 1);
 }
@@ -72,6 +77,7 @@ Eigen::MatrixXd* Spline2dKernel::mutable_kernel_matrix() {
 Eigen::MatrixXd* Spline2dKernel::mutable_offset() { return &offset_; }
 
 Eigen::MatrixXd Spline2dKernel::kernel_matrix() const {
+  // 为什么乘2？？
   return kernel_matrix_ * 2.0;
 }
 
@@ -81,14 +87,19 @@ const Eigen::MatrixXd Spline2dKernel::offset() const { return offset_; }
 
 void Spline2dKernel::AddNthDerivativeKernelMatrix(const uint32_t n,
                                                   const double weight) {
+  // t_knots_为点的个数，那么线段的个数为 t_knots_.size() - 1
+  // 需要计算每段线段对应的kernel的值，是一个num_params X num_params大小的矩阵， num_params = 6
   for (uint32_t i = 0; i + 1 < t_knots_.size(); ++i) {
     const uint32_t num_params = spline_order_ + 1;
+    // 
     Eigen::MatrixXd cur_kernel =
         SplineSegKernel::Instance()->NthDerivativeKernel(
             n, num_params, t_knots_[i + 1] - t_knots_[i]) *
         weight;
+    // 设置x的多项式对应的kernel值
     kernel_matrix_.block(2 * i * num_params, 2 * i * num_params, num_params,
                          num_params) += cur_kernel;
+    // 设置y的多项式对应的kernel值
     kernel_matrix_.block((2 * i + 1) * num_params, (2 * i + 1) * num_params,
                          num_params, num_params) += cur_kernel;
   }

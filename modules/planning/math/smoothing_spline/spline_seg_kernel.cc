@@ -27,6 +27,8 @@ namespace apollo {
 namespace planning {
 
 SplineSegKernel::SplineSegKernel() {
+  // 每个kernel元素对应的系数是固定不变的
+  // 所有在类的构造时就可以计算好
   const int reserved_num_params = reserved_order_ + 1;
   CalculateFx(reserved_num_params);
   CalculateDerivative(reserved_num_params);
@@ -65,6 +67,7 @@ Eigen::MatrixXd SplineSegKernel::DerivativeKernel(const uint32_t num_params,
   }
   Eigen::MatrixXd term_matrix;
   IntegratedTermMatrix(num_params, accumulated_x, "derivative", &term_matrix);
+  // 矩阵对应位置的元素相乘
   return kernel_derivative_.block(0, 0, num_params, num_params)
       .cwiseProduct(term_matrix);
 }
@@ -99,7 +102,8 @@ void SplineSegKernel::IntegratedTermMatrix(const uint32_t num_params,
       term_matrix->rows() != static_cast<int>(num_params)) {
     term_matrix->resize(num_params, num_params);
   }
-
+  // 对于5次多项式，积分后kernel的阶次最高可到11阶次，
+  // x_pow个数为11，保存1次项到11次项的数值
   std::vector<double> x_pow(2 * num_params + 1, 1.0);
   for (uint32_t i = 1; i < 2 * num_params + 1; ++i) {
     x_pow[i] = x_pow[i - 1] * x;
@@ -158,9 +162,11 @@ void SplineSegKernel::CalculateFx(const uint32_t num_params) {
 
 void SplineSegKernel::CalculateDerivative(const uint32_t num_params) {
   kernel_derivative_ = Eigen::MatrixXd::Zero(num_params, num_params);
+  // 第一行和第一列都是0，不用计算
   for (int r = 1; r < kernel_derivative_.rows(); ++r) {
     for (int c = 1; c < kernel_derivative_.cols(); ++c) {
-      kernel_derivative_(r, c) = r * c / (r + c - 1.0);
+      // 积分后的每项的系数
+      kernel_derivative_(r, c) = r * c / (r + c - 1.0); 
     }
   }
 }

@@ -57,7 +57,7 @@ class SplineSegKernel {
   void CalculateDerivative(const uint32_t num_of_params);
   void CalculateSecondOrderDerivative(const uint32_t num_of_params);
   void CalculateThirdOrderDerivative(const uint32_t num_of_params);
-
+  // 默认配置为5次多项式
   const uint32_t reserved_order_ = 5;
   Eigen::MatrixXd kernel_fx_;
   Eigen::MatrixXd kernel_derivative_;

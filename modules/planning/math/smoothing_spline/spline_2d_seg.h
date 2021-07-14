@@ -28,6 +28,7 @@
 namespace apollo {
 namespace planning {
 
+// x,y关于t的参数方程
 class Spline2dSeg {
  public:
   // order represent the number of parameters (not the highest order);

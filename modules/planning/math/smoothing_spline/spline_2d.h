@@ -30,7 +30,7 @@
 
 namespace apollo {
 namespace planning {
-
+// 分段多项式
 class Spline2d {
  public:
   Spline2d(const std::vector<double>& t_knots, const uint32_t order);
@@ -53,7 +53,9 @@ class Spline2d {
 
  private:
   std::vector<Spline2dSeg> splines_;
+  // 分段的时间点t的数目，比如有三个点，就有两个分段多项式
   std::vector<double> t_knots_;
+  // 每段多项式的阶次
   uint32_t spline_order_;
 };
 

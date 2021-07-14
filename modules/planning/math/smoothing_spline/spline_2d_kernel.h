@@ -65,6 +65,7 @@ class Spline2dKernel {
   Eigen::MatrixXd offset_;
   std::vector<double> t_knots_;
   uint32_t spline_order_;
+  // 优化变量的个数
   size_t total_params_;
 };
 

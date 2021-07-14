@@ -89,7 +89,7 @@ bool ReferenceLine::Stitch(const ReferenceLine& other) {
     return false;
   }
   bool last_join = last_sl.s() > 0 && last_sl.s() < other.Length();
-
+  // this的起点在other的终点之后 或者 this的终点在other的起点之前
   if (!first_join && !last_join) {
     AERROR << "These reference lines are not connected.";
     return false;
@@ -99,6 +99,7 @@ bool ReferenceLine::Stitch(const ReferenceLine& other) {
   const auto& other_points = other.reference_points();
   auto lower = accumulated_s.begin();
   static constexpr double kStitchingError = 1e-1;
+  // this参考线的起点在other参考线的首末点之间
   if (first_join) {
     if (first_sl.l() > kStitchingError) {
       AERROR << "lateral stitching error on first join of reference line too "
@@ -111,6 +112,7 @@ bool ReferenceLine::Stitch(const ReferenceLine& other) {
     reference_points_.insert(reference_points_.begin(), other_points.begin(),
                              other_points.begin() + start_i);
   }
+  // this参考线的终点在other参考线的首末点之间
   if (last_join) {
     if (last_sl.l() > kStitchingError) {
       AERROR << "lateral stitching error on first join of reference line too "
@@ -181,7 +183,7 @@ bool ReferenceLine::Segment(const double s, const double look_backward,
       reference_points_.begin(), reference_points_.end()));
   return true;
 }
-
+// FrenetFramePoint: s, l, dl, ddl
 common::FrenetFramePoint ReferenceLine::GetFrenetPoint(
     const common::PathPoint& path_point) const {
   if (reference_points_.empty()) {
@@ -214,6 +216,7 @@ common::FrenetFramePoint ReferenceLine::GetFrenetPoint(
   return frenet_frame_point;
 }
 
+// [s, ds/dt, ds2/dt2],[d, dl/ds, dl2/ds2]
 std::pair<std::array<double, 3>, std::array<double, 3>>
 ReferenceLine::ToFrenetFrame(const common::TrajectoryPoint& traj_point) const {
   ACHECK(!reference_points_.empty());
@@ -541,7 +544,7 @@ double ReferenceLine::GetDrivingWidth(const SLBoundary& sl_boundary) const {
   double lane_left_width = 0.0;
   double lane_right_width = 0.0;
   GetLaneWidth(sl_boundary.start_s(), &lane_left_width, &lane_right_width);
-
+  // 什么意思？
   double driving_width = std::max(lane_left_width - sl_boundary.end_l(),
                                   lane_right_width + sl_boundary.start_l());
   driving_width = std::min(lane_left_width + lane_right_width, driving_width);
@@ -635,6 +638,7 @@ bool ReferenceLine::GetApproximateSLBoundary(
 
   auto projected_point = map_path_.GetSmoothPoint(s);
   auto rotated_box = box;
+  // 什么操作？
   rotated_box.RotateFromCenter(-projected_point.heading());
 
   std::vector<common::math::Vec2d> corners;
@@ -648,6 +652,7 @@ bool ReferenceLine::GetApproximateSLBoundary(
   for (const auto& point : corners) {
     // x <--> s, y <--> l
     // Because the box is rotated to align the reference line
+    // 什么操作？
     min_s = std::fmin(min_s, point.x() - rotated_box.center().x() + s);
     max_s = std::fmax(max_s, point.x() - rotated_box.center().x() + s);
     min_l = std::fmin(min_l, point.y() - rotated_box.center().y() + l);
@@ -669,7 +674,7 @@ bool ReferenceLine::GetSLBoundary(const common::math::Box2d& box,
   std::vector<common::math::Vec2d> corners;
   box.GetAllCorners(&corners);
 
-  // The order must be counter-clockwise
+  // The order must be counter-clockwise，顺时针方向
   std::vector<SLPoint> sl_corners;
   for (const auto& point : corners) {
     SLPoint sl_point;
@@ -683,7 +688,7 @@ bool ReferenceLine::GetSLBoundary(const common::math::Box2d& box,
 
   for (size_t i = 0; i < corners.size(); ++i) {
     auto index0 = i;
-    auto index1 = (i + 1) % corners.size();
+    auto index1 = (i + 1) % corners.size();  // 下一个corner，如果i==size()-1,index1==0
     const auto& p0 = corners[index0];
     const auto& p1 = corners[index1];
 
@@ -704,6 +709,7 @@ bool ReferenceLine::GetSLBoundary(const common::math::Box2d& box,
     *sl_boundary->add_boundary_point() = sl_corners[index0];
 
     // sl_point is outside of polygon; add to the vertex list
+    // crossprod不该是0吗
     if (v0.CrossProd(v1) < 0.0) {
       *sl_boundary->add_boundary_point() = sl_point_mid;
     }
@@ -785,6 +791,7 @@ bool ReferenceLine::HasOverlap(const common::math::Box2d& box) const {
 }
 
 std::string ReferenceLine::DebugString() const {
+  // default: FLAGS_trajectory_point_num_for_debug = 10
   const auto limit =
       std::min(reference_points_.size(),
                static_cast<size_t>(FLAGS_trajectory_point_num_for_debug));
@@ -802,7 +809,7 @@ double ReferenceLine::GetSpeedLimitFromS(const double s) const {
     }
   }
   const auto& map_path_point = GetReferencePoint(s);
-
+  // default: FLAGS_planning_upper_speed_limit = 31.3 m/s
   double speed_limit = FLAGS_planning_upper_speed_limit;
   bool speed_limit_found = false;
   for (const auto& lane_waypoint : map_path_point.lane_waypoints()) {
@@ -816,11 +823,11 @@ double ReferenceLine::GetSpeedLimitFromS(const double s) const {
   }
 
   if (!speed_limit_found) {
-    // use default speed limit based on road_type
+    // use default speed limit based on road_type, 15.67m/s
     speed_limit = FLAGS_default_city_road_speed_limit;
     hdmap::Road::Type road_type = GetRoadType(s);
     if (road_type == hdmap::Road::HIGHWAY) {
-      speed_limit = FLAGS_default_highway_speed_limit;
+      speed_limit = FLAGS_default_highway_speed_limit;  // default: 29.06 m/s
     }
   }
 

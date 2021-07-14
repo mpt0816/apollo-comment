@@ -140,6 +140,7 @@ const std::vector<double>& Spline2d::t_knots() const { return t_knots_; }
 uint32_t Spline2d::spline_order() const { return spline_order_; }
 
 uint32_t Spline2d::find_index(const double t) const {
+  // 查找第一个大于t的
   auto upper_bound = std::upper_bound(t_knots_.begin() + 1, t_knots_.end(), t);
   return std::min(static_cast<uint32_t>(t_knots_.size() - 1),
                   static_cast<uint32_t>(upper_bound - t_knots_.begin())) -
