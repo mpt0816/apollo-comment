@@ -162,7 +162,7 @@ Status OnLanePlanning::InitFrame(const uint32_t sequence_num,
 
   auto forward_limit =
       hdmap::PncMap::LookForwardDistance(vehicle_state.linear_velocity());
-
+  // default: FLAGS_look_backward_distance = 50.0m
   for (auto& ref_line : reference_lines) {
     if (!ref_line.Segment(Vec2d(vehicle_state.x(), vehicle_state.y()),
                           FLAGS_look_backward_distance, forward_limit)) {
@@ -179,7 +179,7 @@ Status OnLanePlanning::InitFrame(const uint32_t sequence_num,
       return Status(ErrorCode::PLANNING_ERROR, msg);
     }
   }
-
+  // 计算referencelineinfo
   auto status = frame_->Init(
       injector_->vehicle_state(), reference_lines, segments,
       reference_line_provider_->FutureRouteWaypoints(), injector_->ego_info());
@@ -231,7 +231,7 @@ void OnLanePlanning::RunOnce(const LocalView& local_view,
 
   // chassis
   ADEBUG << "Get chassis:" << local_view_.chassis->DebugString();
-
+  // 通过定位和底盘消息合成 common::VehicleState
   Status status = injector_->vehicle_state()->Update(
       *local_view_.localization_estimate, *local_view_.chassis);
 
@@ -257,9 +257,10 @@ void OnLanePlanning::RunOnce(const LocalView& local_view,
     GenerateStopTrajectory(ptr_trajectory_pb);
     return;
   }
-
+  // default: FLAGS_message_latency_threshold = 0.2
   if (start_timestamp - vehicle_state_timestamp <
       FLAGS_message_latency_threshold) {
+    // 根据adc在vehicle_state_timestamp时刻的状态估计当前时刻的状态
     vehicle_state = AlignTimeStamp(vehicle_state, start_timestamp);
   }
 
@@ -295,25 +296,30 @@ void OnLanePlanning::RunOnce(const LocalView& local_view,
 
   // planning is triggered by prediction data, but we can still use an estimated
   // cycle time for stitching
+  // default: planning_loop_rate = 10
   const double planning_cycle_time =
       1.0 / static_cast<double>(FLAGS_planning_loop_rate);
 
   std::string replan_reason;
+  // default: FLAGS_trajectory_stitching_preserved_length = 20
+  // 计算上一帧轨迹的保留段，未来和本帧规划的轨迹进行拼接
   std::vector<TrajectoryPoint> stitching_trajectory =
       TrajectoryStitcher::ComputeStitchingTrajectory(
           vehicle_state, start_timestamp, planning_cycle_time,
           FLAGS_trajectory_stitching_preserved_length, true,
           last_publishable_trajectory_.get(), &replan_reason);
-
+  // 计算adc的box
   injector_->ego_info()->Update(stitching_trajectory.back(), vehicle_state);
+  // planning模块计数
   const uint32_t frame_num = static_cast<uint32_t>(seq_num_++);
   status = InitFrame(frame_num, stitching_trajectory.back(), vehicle_state);
 
   if (status.ok()) {
+    // 计算adc前方50内最近障碍物的距离
     injector_->ego_info()->CalculateFrontObstacleClearDistance(
         frame_->obstacles());
   }
-
+  // default: FLAGS_enable_record_debug = true
   if (FLAGS_enable_record_debug) {
     frame_->RecordInputDebug(ptr_trajectory_pb->mutable_debug());
   }
@@ -322,7 +328,7 @@ void OnLanePlanning::RunOnce(const LocalView& local_view,
 
   if (!status.ok()) {
     AERROR << status.ToString();
-    if (FLAGS_publish_estop) {
+    if (FLAGS_publish_estop) {  // default: false
       // "estop" signal check in function "Control::ProduceControlCommand()"
       // estop_ = estop_ || local_view_.trajectory.estop().is_estop();
       // we should add more information to ensure the estop being triggered.
@@ -348,9 +354,10 @@ void OnLanePlanning::RunOnce(const LocalView& local_view,
     injector_->frame_history()->Add(n, std::move(frame_));
     return;
   }
-
+  // 基于每条参考线添加交通灯信息
   for (auto& ref_line_info : *frame_->mutable_reference_line_info()) {
     TrafficDecider traffic_decider;
+    // 对各种交通规则进行注册
     traffic_decider.Init(traffic_rule_configs_);
     auto traffic_status =
         traffic_decider.Execute(frame_.get(), &ref_line_info, injector_);

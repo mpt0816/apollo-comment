@@ -121,8 +121,10 @@ std::vector<TrajectoryPoint> TrajectoryStitcher::ComputeStitchingTrajectory(
     const double planning_cycle_time, const size_t preserved_points_num,
     const bool replan_by_offset, const PublishableTrajectory* prev_trajectory,
     std::string* replan_reason) {
+  // default: FLAGS_enable_trajectory_stitcher = true
   if (!FLAGS_enable_trajectory_stitcher) {
     *replan_reason = "stitch is disabled by gflag.";
+    // 规划起点为adc当前位置
     return ComputeReinitStitchingTrajectory(planning_cycle_time, vehicle_state);
   }
   if (!prev_trajectory) {
@@ -147,7 +149,7 @@ std::vector<TrajectoryPoint> TrajectoryStitcher::ComputeStitchingTrajectory(
 
   const double veh_rel_time =
       current_timestamp - prev_trajectory->header_time();
-
+  // 当前时间adc应该在的位置
   size_t time_matched_index =
       prev_trajectory->QueryLowerBoundPoint(veh_rel_time);
 
@@ -173,22 +175,22 @@ std::vector<TrajectoryPoint> TrajectoryStitcher::ComputeStitchingTrajectory(
     *replan_reason = "replan for previous trajectory missed path point";
     return ComputeReinitStitchingTrajectory(planning_cycle_time, vehicle_state);
   }
-
+  // adc当前位置在上一帧轨迹的最近点
   size_t position_matched_index = prev_trajectory->QueryNearestPointWithBuffer(
       {vehicle_state.x(), vehicle_state.y()}, 1.0e-6);
-
+  // adc位置和投影点的sl值
   auto frenet_sd = ComputePositionProjection(
       vehicle_state.x(), vehicle_state.y(),
       prev_trajectory->TrajectoryPointAt(
           static_cast<uint32_t>(position_matched_index)));
-
+  // replan_by_offset: 是否允许偏离后重新规划
   if (replan_by_offset) {
     auto lon_diff = time_matched_point.path_point().s() - frenet_sd.first;
     auto lat_diff = frenet_sd.second;
 
     ADEBUG << "Control lateral diff: " << lat_diff
            << ", longitudinal diff: " << lon_diff;
-
+    // default： FLAGS_replan_lateral_distance_threshold = 0.5
     if (std::fabs(lat_diff) > FLAGS_replan_lateral_distance_threshold) {
       const std::string msg = absl::StrCat(
           "the distance between matched point and actual position is too "
@@ -199,7 +201,7 @@ std::vector<TrajectoryPoint> TrajectoryStitcher::ComputeStitchingTrajectory(
       return ComputeReinitStitchingTrajectory(planning_cycle_time,
                                               vehicle_state);
     }
-
+    // default: FLAGS_replan_longitudinal_distance_threshold = 2.5
     if (std::fabs(lon_diff) > FLAGS_replan_longitudinal_distance_threshold) {
       const std::string msg = absl::StrCat(
           "the distance between matched point and actual position is too "
@@ -214,7 +216,7 @@ std::vector<TrajectoryPoint> TrajectoryStitcher::ComputeStitchingTrajectory(
     ADEBUG << "replan according to certain amount of lat and lon offset is "
               "disabled";
   }
-
+  // 当前时间和上一帧规划时间戳之差(和上一帧的延迟) + 规划模块计算周期(本帧的延迟)
   double forward_rel_time = veh_rel_time + planning_cycle_time;
 
   size_t forward_time_index =
@@ -224,7 +226,9 @@ std::vector<TrajectoryPoint> TrajectoryStitcher::ComputeStitchingTrajectory(
   ADEBUG << "Time matched index:\t" << time_matched_index;
 
   auto matched_index = std::min(time_matched_index, position_matched_index);
-
+  // 保留段的大小：
+  // 起点: 从最近匹配点向前保留preserved_points_num个轨迹点
+  // 终点: 时间延迟后对应的轨迹点
   std::vector<TrajectoryPoint> stitching_trajectory(
       prev_trajectory->begin() +
           std::max(0, static_cast<int>(matched_index - preserved_points_num)),
@@ -238,8 +242,10 @@ std::vector<TrajectoryPoint> TrajectoryStitcher::ComputeStitchingTrajectory(
       return ComputeReinitStitchingTrajectory(planning_cycle_time,
                                               vehicle_state);
     }
+    // 重新设置轨迹点的相对时间(相对于时间戳)
     tp.set_relative_time(tp.relative_time() + prev_trajectory->header_time() -
                          current_timestamp);
+    // 重新设置轨迹点相对于起点的s
     tp.mutable_path_point()->set_s(tp.path_point().s() - zero_s);
   }
   return stitching_trajectory;

@@ -321,6 +321,7 @@ void Obstacle::BuildReferenceLineStBoundary(const ReferenceLine& reference_line,
     std::vector<std::pair<STPoint, STPoint>> point_pairs;
     double start_s = sl_boundary_.start_s();
     double end_s = sl_boundary_.end_s();
+    // default: kStBoundaryDeltaS = 0.2
     if (end_s - start_s < kStBoundaryDeltaS) {
       end_s = start_s + kStBoundaryDeltaS;
     }
@@ -329,6 +330,7 @@ void Obstacle::BuildReferenceLineStBoundary(const ReferenceLine& reference_line,
     }
     point_pairs.emplace_back(STPoint(start_s - adc_start_s, 0.0),
                              STPoint(end_s - adc_start_s, 0.0));
+    // default: FLAGS_st_max_t = 8.0
     point_pairs.emplace_back(STPoint(start_s - adc_start_s, FLAGS_st_max_t),
                              STPoint(end_s - adc_start_s, FLAGS_st_max_t));
     reference_line_st_boundary_ = STBoundary(point_pairs);
@@ -746,7 +748,7 @@ void Obstacle::CheckLaneBlocking(const ReferenceLine& reference_line) {
 
   const double driving_width = reference_line.GetDrivingWidth(sl_boundary_);
   auto vehicle_param = common::VehicleConfigHelper::GetConfig().vehicle_param();
-
+  // default: FLAGS_static_obstacle_nudge_l_buffer = 0.3
   if (reference_line.IsOnLane(sl_boundary_) &&
       driving_width <
           vehicle_param.width() + FLAGS_static_obstacle_nudge_l_buffer) {

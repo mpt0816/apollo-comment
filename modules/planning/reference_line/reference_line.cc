@@ -544,7 +544,9 @@ double ReferenceLine::GetDrivingWidth(const SLBoundary& sl_boundary) const {
   double lane_left_width = 0.0;
   double lane_right_width = 0.0;
   GetLaneWidth(sl_boundary.start_s(), &lane_left_width, &lane_right_width);
-  // 什么意思？
+  // lane_left_width和lane_right_width都是正值
+  // lane_left_width - sl_boundary.end_l()表示左侧可通行区域宽度
+  // lane_right_width + sl_boundary.start_l()表示右侧可通行区域宽度
   double driving_width = std::max(lane_left_width - sl_boundary.end_l(),
                                   lane_right_width + sl_boundary.start_l());
   driving_width = std::min(lane_left_width + lane_right_width, driving_width);

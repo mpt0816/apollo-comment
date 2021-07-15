@@ -51,6 +51,7 @@ using apollo::prediction::PredictionObstacles;
 
 DrivingAction Frame::pad_msg_driving_action_ = DrivingAction::NONE;
 
+// defaulg: FLAGS_max_frame_history_num = 1
 FrameHistory::FrameHistory()
     : IndexedQueue<uint32_t, Frame>(FLAGS_max_frame_history_num) {}
 
@@ -110,10 +111,12 @@ bool Frame::Rerouting(PlanningContext *planning_context) {
     return false;
   }
   request.clear_waypoint();
+  // 设置重路由重新规划的起点是adc当前位置
   auto *start_point = request.add_waypoint();
   start_point->set_id(lane->id().id());
   start_point->set_s(s);
   start_point->mutable_pose()->CopyFrom(point);
+  // 设置路由的途径点
   for (const auto &waypoint : future_route_waypoints_) {
     // reference_line_provider_->FutureRouteWaypoints()) {
     request.add_waypoint()->CopyFrom(waypoint);
@@ -213,6 +216,7 @@ const Obstacle *Frame::CreateStopObstacle(
   }
 
   const auto &reference_line = reference_line_info->reference_line();
+  // default: FLAGS_virtual_stop_wall_length = 0.1
   const double box_center_s = obstacle_s + FLAGS_virtual_stop_wall_length / 2.0;
   auto box_center = reference_line.GetReferencePoint(box_center_s);
   double heading = reference_line.GetReferencePoint(obstacle_s).heading();
@@ -357,7 +361,7 @@ Status Frame::InitFrameData(
   }
   ADEBUG << "Enabled align prediction time ? : " << std::boolalpha
          << FLAGS_align_prediction_time;
-
+  // default: FLAGS_align_prediction_time = false
   if (FLAGS_align_prediction_time) {
     auto prediction = *(local_view_.prediction_obstacles);
     AlignPredictionTime(vehicle_state_.timestamp(), &prediction);
@@ -367,6 +371,7 @@ Status Frame::InitFrameData(
        Obstacle::CreateObstacles(*local_view_.prediction_obstacles)) {
     AddObstacle(*ptr);
   }
+  // adc静止时，在adc位置处有碰撞，规划失败
   if (planning_start_point_.v() < 1e-3) {
     const auto *collision_obstacle = FindCollisionObstacle(ego_info);
     if (collision_obstacle != nullptr) {
@@ -379,7 +384,7 @@ Status Frame::InitFrameData(
   }
 
   ReadTrafficLights();
-
+  // 驾驶员或者乘客通过pad下发的指令
   ReadPadMsgDrivingAction();
 
   return Status::OK();
@@ -449,6 +454,7 @@ void Frame::AlignPredictionTime(const double planning_start_time,
   for (auto &obstacle : *prediction_obstacles->mutable_prediction_obstacle()) {
     for (auto &trajectory : *obstacle.mutable_trajectory()) {
       for (auto &point : *trajectory.mutable_trajectory_point()) {
+        // 将预测障碍物的轨迹点的时间和本帧规划时间对齐
         point.set_relative_time(prediction_header_time + point.relative_time() -
                                 planning_start_time);
       }
@@ -459,6 +465,7 @@ void Frame::AlignPredictionTime(const double planning_start_time,
                it->relative_time() < 0) {
           ++it;
         }
+        // 删除本帧规划之前之前的障碍物预测轨迹点
         trajectory.mutable_trajectory_point()->erase(
             trajectory.trajectory_point().begin(), it);
       }
@@ -479,8 +486,10 @@ void Frame::ReadTrafficLights() {
   if (traffic_light_detection == nullptr) {
     return;
   }
+  // 信号灯的时间延迟
   const double delay = traffic_light_detection->header().timestamp_sec() -
                        Clock::NowInSeconds();
+  // default: FLAGS_signal_expire_time_sec = 5.0
   if (delay > FLAGS_signal_expire_time_sec) {
     ADEBUG << "traffic signals msg is expired, delay = " << delay
            << " seconds.";

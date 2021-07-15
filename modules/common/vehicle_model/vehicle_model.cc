@@ -83,7 +83,8 @@ void VehicleModel::RearCenteredKinematicBicycleModel(
 VehicleState VehicleModel::Predict(const double predicted_time_horizon,
                                    const VehicleState& cur_vehicle_state) {
   VehicleModelConfig vehicle_model_config;
-
+  // default: FLAGS_vehicle_model_config_filename = 
+  // "/apollo/modules/common/vehicle_model/conf/vehicle_model_config.pb.txt"
   ACHECK(cyber::common::GetProtoFromFile(FLAGS_vehicle_model_config_filename,
                                          &vehicle_model_config))
       << "Failed to load vehicle model config file "

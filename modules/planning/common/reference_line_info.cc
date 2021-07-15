@@ -77,7 +77,7 @@ bool ReferenceLineInfo::Init(const std::vector<const Obstacle*>& obstacles) {
     AERROR << "Failed to get ADC boundary from box: " << box.DebugString();
     return false;
   }
-
+  // 计算规划起点前的各种path_overlap的第一个
   InitFirstOverlaps();
 
   if (adc_sl_boundary_.end_s() < 0 ||
@@ -101,11 +101,12 @@ bool ReferenceLineInfo::Init(const std::vector<const Obstacle*>& obstacles) {
   const auto& map_path = reference_line_.map_path();
   for (const auto& speed_bump : map_path.speed_bump_overlaps()) {
     // -1 and + 1.0 are added to make sure it can be sampled.
+    // default: FLAGS_speed_bump_speed_limit = 4.4704(10km/h)
     reference_line_.AddSpeedLimit(speed_bump.start_s - 1.0,
                                   speed_bump.end_s + 1.0,
                                   FLAGS_speed_bump_speed_limit);
   }
-
+  // default: FLAGS_default_cruise_speed = 5.0
   SetCruiseSpeed(FLAGS_default_cruise_speed);
 
   // set lattice planning target speed limit;
@@ -220,6 +221,7 @@ bool ReferenceLineInfo::GetFirstOverlap(
 
   auto overlap_min_s_iter = path_overlaps.end();
   for (auto iter = path_overlaps.begin(); iter != path_overlaps.end(); ++iter) {
+    // 忽略规划起点的path_overlap
     if (iter->end_s < start_s) {
       continue;
     }
@@ -371,6 +373,7 @@ Obstacle* ReferenceLineInfo::AddObstacle(const Obstacle* obstacle) {
     return mutable_obstacle;
   }
   mutable_obstacle->SetPerceptionSlBoundary(perception_sl);
+  // 静态障碍物在参考线中心或者在一侧但剩余宽度adc不能通行
   mutable_obstacle->CheckLaneBlocking(reference_line_);
   if (mutable_obstacle->IsLaneBlocking()) {
     ADEBUG << "obstacle [" << obstacle->Id() << "] is lane blocking.";
@@ -402,6 +405,7 @@ Obstacle* ReferenceLineInfo::AddObstacle(const Obstacle* obstacle) {
 
 bool ReferenceLineInfo::AddObstacles(
     const std::vector<const Obstacle*>& obstacles) {
+  // default: FLAGS_use_multi_thread_to_add_obstacles = false
   if (FLAGS_use_multi_thread_to_add_obstacles) {
     std::vector<std::future<Obstacle*>> results;
     for (const auto* obstacle : obstacles) {
@@ -495,9 +499,9 @@ bool ReferenceLineInfo::CombinePathAndSpeedProfile(
   ACHECK(ptr_discretized_trajectory != nullptr);
   // use varied resolution to reduce data load but also provide enough data
   // point for control module
-  const double kDenseTimeResoltuion = FLAGS_trajectory_time_min_interval;
-  const double kSparseTimeResolution = FLAGS_trajectory_time_max_interval;
-  const double kDenseTimeSec = FLAGS_trajectory_time_high_density_period;
+  const double kDenseTimeResoltuion = FLAGS_trajectory_time_min_interval;   // default: 0.02
+  const double kSparseTimeResolution = FLAGS_trajectory_time_max_interval;  // default: 0.1
+  const double kDenseTimeSec = FLAGS_trajectory_time_high_density_period;   // default: 1.0
 
   if (path_data_.discretized_path().empty()) {
     AERROR << "path data is empty";
@@ -508,7 +512,7 @@ bool ReferenceLineInfo::CombinePathAndSpeedProfile(
     AERROR << "speed profile is empty";
     return false;
   }
-
+  // 规划轨迹的前1秒内以0.02s进行采样，之后以0.1s进行采样
   for (double cur_rel_time = 0.0; cur_rel_time < speed_data_.TotalTime();
        cur_rel_time += (cur_rel_time < kDenseTimeSec ? kDenseTimeResoltuion
                                                      : kSparseTimeResolution)) {
@@ -651,6 +655,7 @@ void ReferenceLineInfo::SetTurnSignalBasedOnLaneTurnType(
   vehicle_signal->set_turn_signal(VehicleSignal::TURN_NONE);
 
   // Set turn signal based on lane-change.
+  // 根据规划信息设置转向灯
   if (IsChangeLanePath()) {
     if (Lanes().PreviousAction() == routing::ChangeLaneType::LEFT) {
       vehicle_signal->set_turn_signal(VehicleSignal::TURN_LEFT);
@@ -671,8 +676,10 @@ void ReferenceLineInfo::SetTurnSignalBasedOnLaneTurnType(
   }
 
   // Set turn signal based on lane's turn type.
+  // 根据地图信息设置转向灯
   double route_s = 0.0;
   const double adc_s = adc_sl_boundary_.end_s();
+  // default: FLAGS_turn_signal_distance = 100.0m
   for (const auto& seg : Lanes()) {
     if (route_s > adc_s + FLAGS_turn_signal_distance) {
       break;
@@ -731,6 +738,7 @@ bool ReferenceLineInfo::ReachedDestination() const {
 
 double ReferenceLineInfo::SDistanceToDestination() const {
   double res = std::numeric_limits<double>::max();
+  // default: FLAGS_destination_obstacle_id = "DEST"
   const auto* dest_ptr = path_decision_.Find(FLAGS_destination_obstacle_id);
   if (!dest_ptr) {
     return res;
@@ -770,6 +778,7 @@ void ReferenceLineInfo::MakeDecision(DecisionResult* decision_result,
 
   // check stop decision
   int error_code = MakeMainStopDecision(decision_result);
+  // MakeMainStopDecision值返回0或者1
   if (error_code < 0) {
     MakeEStopDecision(decision_result);
   }
@@ -787,6 +796,7 @@ void ReferenceLineInfo::MakeMainMissionCompleteDecision(
       main_stop.reason_code() != STOP_REASON_PULL_OVER) {
     return;
   }
+  // default: FLAGS_destination_check_distance = 5.0
   const auto& adc_pos = adc_planning_point_.path_point();
   if (common::util::DistanceXY(adc_pos, main_stop.stop_point()) >
       FLAGS_destination_check_distance) {

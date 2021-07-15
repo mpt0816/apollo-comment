@@ -57,6 +57,8 @@ Status VehicleStateProvider::Update(
 
   if (chassis.has_speed_mps()) {
     vehicle_state_.set_linear_velocity(chassis.speed_mps());
+    // default: FLAGS_reverse_heading_vehicle_state = false
+    // test flag for reverse driving
     if (!FLAGS_reverse_heading_vehicle_state &&
         vehicle_state_.gear() == canbus::Chassis::GEAR_REVERSE) {
       vehicle_state_.set_linear_velocity(-vehicle_state_.linear_velocity());
@@ -88,6 +90,7 @@ bool VehicleStateProvider::ConstructExceptLinearVelocity(
   }
 
   // skip localization update when it is in use_navigation_mode.
+  // default: FLAGS_use_navigation_mode = false
   if (FLAGS_use_navigation_mode) {
     ADEBUG << "Skip localization update when it is in use_navigation_mode.";
     return true;
@@ -109,7 +112,8 @@ bool VehicleStateProvider::ConstructExceptLinearVelocity(
         math::QuaternionToHeading(orientation.qw(), orientation.qx(),
                                   orientation.qy(), orientation.qz()));
   }
-
+  // default: FLAGS_enable_map_reference_unify = true, 
+  // enable IMU data convert to map reference
   if (FLAGS_enable_map_reference_unify) {
     if (!localization.pose().has_angular_velocity_vrf()) {
       AERROR << "localization.pose().has_angular_velocity_vrf() must be true "

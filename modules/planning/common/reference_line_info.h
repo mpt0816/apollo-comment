@@ -278,6 +278,7 @@ class ReferenceLineInfo {
                        hdmap::PathOverlap* path_overlap);
 
  private:
+  // 是否有保护右转？？？？
   static std::unordered_map<std::string, bool> junction_right_of_way_map_;
   const common::VehicleState vehicle_state_;
   const common::TrajectoryPoint adc_planning_point_;
@@ -290,16 +291,17 @@ class ReferenceLineInfo {
   double cost_ = 0.0;
 
   bool is_drivable_ = true;
-
+  // 障碍物信息
   PathDecision path_decision_;
 
   Obstacle* blocking_obstacle_;
-
+  // 所有的可选边界和规划路径
   std::vector<PathBoundary> candidate_path_boundaries_;
   std::vector<PathData> candidate_path_data_;
-
+  // 路径规划决策结果
   PathData path_data_;
   PathData fallback_path_data_;
+  // 速度规划结果
   SpeedData speed_data_;
 
   DiscretizedTrajectory discretized_trajectory_;
@@ -310,10 +312,10 @@ class ReferenceLineInfo {
    * @brief SL boundary of stitching point (starting point of plan trajectory)
    * relative to the reference line
    */
-  SLBoundary adc_sl_boundary_;
+  SLBoundary adc_sl_boundary_;  // adc在规划起点处的sl边界
 
   planning_internal::Debug debug_;
-  LatencyStats latency_stats_;
+  LatencyStats latency_stats_;  // 车辆底盘延迟参数
 
   hdmap::RouteSegments lanes_;
 
