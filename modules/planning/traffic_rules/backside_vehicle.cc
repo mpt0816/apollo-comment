@@ -35,6 +35,7 @@ void BacksideVehicle::MakeLaneKeepingObstacleDecision(
   const double adc_length_s =
       adc_sl_boundary.end_s() - adc_sl_boundary.start_s();
   for (const auto* obstacle : path_decision->obstacles().Items()) {
+    // 在adc前方或者需要引起注意的障碍物不能ignore
     if (obstacle->PerceptionSLBoundary().end_s() >= adc_sl_boundary.end_s() ||
         obstacle->IsCautionLevelObstacle()) {
       // don't ignore such vehicles.
@@ -56,14 +57,16 @@ void BacksideVehicle::MakeLaneKeepingObstacleDecision(
                                         obstacle->Id(), ignore);
       continue;
     }
-
+    // default: backside_lane_width = 4.0
     const double lane_boundary =
         config_.backside_vehicle().backside_lane_width();
     if (obstacle->PerceptionSLBoundary().start_s() < adc_sl_boundary.end_s()) {
+      // 在adc侧后方的车辆不能ignore
       if (obstacle->PerceptionSLBoundary().start_l() > lane_boundary ||
           obstacle->PerceptionSLBoundary().end_l() < -lane_boundary) {
         continue;
       }
+      // 在adc正后方的车辆ignore
       path_decision->AddLongitudinalDecision("backside_vehicle/sl < adc.end_s",
                                              obstacle->Id(), ignore);
       path_decision->AddLateralDecision("backside_vehicle/sl < adc.end_s",
@@ -76,8 +79,10 @@ void BacksideVehicle::MakeLaneKeepingObstacleDecision(
 Status BacksideVehicle::ApplyRule(
     Frame* const, ReferenceLineInfo* const reference_line_info) {
   auto* path_decision = reference_line_info->path_decision();
+  // 规划起点在参考线的sl投影
   const auto& adc_sl_boundary = reference_line_info->AdcSlBoundary();
   // The lane keeping reference line.
+  // 不是换道的参考线，使用lane keep策略处理后方车辆
   if (reference_line_info->Lanes().IsOnSegment()) {
     MakeLaneKeepingObstacleDecision(adc_sl_boundary, path_decision);
   }

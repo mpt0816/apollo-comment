@@ -45,6 +45,8 @@ Status KeepClear::ApplyRule(Frame* const frame,
   CHECK_NOTNULL(reference_line_info);
 
   // keep_clear zone
+  // default: enable_keep_clear_zone = true
+  // 对keep clear区域生成虚拟静态障碍物
   if (config_.keep_clear().enable_keep_clear_zone()) {
     const std::vector<PathOverlap>& keep_clear_overlaps =
         reference_line_info->reference_line().map_path().clear_area_overlaps();
@@ -64,6 +66,7 @@ Status KeepClear::ApplyRule(Frame* const frame,
   }
 
   // junction
+  // default: enable_junction = true
   if (config_.keep_clear().enable_junction()) {
     hdmap::PathOverlap* crosswalk_overlap = nullptr;
     hdmap::PathOverlap* stop_sign_overlap = nullptr;
@@ -103,7 +106,7 @@ Status KeepClear::ApplyRule(Frame* const frame,
           break;
       }
     }
-
+    // 对junction开始的位置进行对齐
     if (pnc_junction_overlap != nullptr) {
       const double adc_front_edge_s =
           reference_line_info->AdcSlBoundary().end_s();
@@ -114,7 +117,7 @@ Status KeepClear::ApplyRule(Frame* const frame,
         // traffic_light, stop_sign, and then crosswalk if neither
         if (traffic_light_overlap != nullptr &&
             std::fabs(pnc_junction_start_s - traffic_light_overlap->start_s) <=
-                config_.keep_clear().align_with_traffic_sign_tolerance()) {
+                config_.keep_clear().align_with_traffic_sign_tolerance()) {  // default: 4.5
           ADEBUG << "adjust pnc_junction_start_s[" << pnc_junction_start_s
                  << "] to traffic_light_start_s"
                  << traffic_light_overlap->start_s << "]";
@@ -183,9 +186,10 @@ bool KeepClear::BuildKeepClearObstacle(
   CHECK_NOTNULL(reference_line_info);
 
   // check
+  // adc已经进入keep clear区域了，不再做处理
   const double adc_front_edge_s = reference_line_info->AdcSlBoundary().end_s();
   if (adc_front_edge_s - keep_clear_start_s >
-      config_.keep_clear().min_pass_s_distance()) {
+      config_.keep_clear().min_pass_s_distance()) {   // default: 2.0
     ADEBUG << "adc inside keep_clear zone[" << virtual_obstacle_id << "] s["
            << keep_clear_start_s << ", " << keep_clear_end_s
            << "] adc_front_edge_s[" << adc_front_edge_s
@@ -195,7 +199,7 @@ bool KeepClear::BuildKeepClearObstacle(
 
   ADEBUG << "keep clear obstacle: [" << keep_clear_start_s << ", "
          << keep_clear_end_s << "]";
-  // create virtual static obstacle
+  // create virtual static obstacle 生成虚拟静态障碍物
   auto* obstacle =
       frame->CreateStaticObstacle(reference_line_info, virtual_obstacle_id,
                                   keep_clear_start_s, keep_clear_end_s);

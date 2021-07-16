@@ -55,7 +55,7 @@ void TrafficLight::MakeDecisions(Frame* const frame,
   CHECK_NOTNULL(frame);
   CHECK_NOTNULL(reference_line_info);
 
-  if (!config_.traffic_light().enabled()) {
+  if (!config_.traffic_light().enabled()) {  // default: true
     return;
   }
 
@@ -77,11 +77,13 @@ void TrafficLight::MakeDecisions(Frame* const frame,
   const std::vector<PathOverlap>& traffic_light_overlaps =
       reference_line_info->reference_line().map_path().signal_overlaps();
   for (const auto& traffic_light_overlap : traffic_light_overlaps) {
+    // 忽略adc后方的信号灯
     if (traffic_light_overlap.end_s <= adc_back_edge_s) {
       continue;
     }
 
     // check if traffic-light-stop already finished, set by scenario/stage
+    // 忽略处理完成的信号灯
     bool traffic_light_done = false;
     for (const auto& done_traffic_light_overlap_id :
          traffic_light_status.done_traffic_light_overlap_id()) {
@@ -110,6 +112,7 @@ void TrafficLight::MakeDecisions(Frame* const frame,
     ADEBUG << "traffic_light[" << traffic_light_overlap.object_id
            << "] start_s[" << traffic_light_overlap.start_s << "] s_distance["
            << s_distance << "] actual_distance[" << distance << "]";
+    // adc与信号灯的直线距离和参考线的投影距离误差过大，忽略
     if (s_distance >= 0 &&
         fabs(s_distance - distance) > kSDiscrepanceTolerance) {
       ADEBUG << "SKIP traffic_light[" << traffic_light_overlap.object_id
@@ -119,6 +122,7 @@ void TrafficLight::MakeDecisions(Frame* const frame,
 
     auto signal_color =
         frame->GetSignal(traffic_light_overlap.object_id).color();
+    // 计算到信号灯的刹停加速度
     const double stop_deceleration = util::GetADCStopDeceleration(
         injector_->vehicle_state(), adc_front_edge_s,
         traffic_light_overlap.start_s);
@@ -134,13 +138,14 @@ void TrafficLight::MakeDecisions(Frame* const frame,
     signal_debug->set_color(signal_color);
     signal_debug->set_light_id(traffic_light_overlap.object_id);
     signal_debug->set_light_stop_s(traffic_light_overlap.start_s);
-
+    // 绿灯无需处理
     if (signal_color == perception::TrafficLight::GREEN) {
       continue;
     }
 
     // Red/Yellow/Unknown: check deceleration
-    if (stop_deceleration > config_.traffic_light().max_stop_deceleration()) {
+    // 无法刹停，直接通过
+    if (stop_deceleration > config_.traffic_light().max_stop_deceleration()) {  // default: 4.0
       AWARN << "stop_deceleration too big to achieve.  SKIP red light";
       continue;
     }
@@ -153,7 +158,7 @@ void TrafficLight::MakeDecisions(Frame* const frame,
         TRAFFIC_LIGHT_VO_ID_PREFIX + traffic_light_overlap.object_id;
     const std::vector<std::string> wait_for_obstacles;
     util::BuildStopDecision(virtual_obstacle_id, traffic_light_overlap.start_s,
-                            config_.traffic_light().stop_distance(),
+                            config_.traffic_light().stop_distance(),           // default: 1.0
                             StopReasonCode::STOP_REASON_SIGNAL,
                             wait_for_obstacles,
                             TrafficRuleConfig::RuleId_Name(config_.rule_id()),

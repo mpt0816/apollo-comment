@@ -83,7 +83,7 @@ bool Rerouting::ChangeLaneFailRerouting() {
   const auto vehicle_state = injector_->vehicle_state();
   double speed = vehicle_state->linear_velocity();
   const double prepare_rerouting_time =
-      config_.rerouting().prepare_rerouting_time();
+      config_.rerouting().prepare_rerouting_time();  // default: 2.0
   const double prepare_distance = speed * prepare_rerouting_time;
   if (sl_point.s() > adc_s + prepare_distance) {
     ADEBUG << "No need rerouting now because still can drive for time: "
@@ -101,7 +101,7 @@ bool Rerouting::ChangeLaneFailRerouting() {
   double current_time = Clock::NowInSeconds();
   if (rerouting->has_last_rerouting_time() &&
       (current_time - rerouting->last_rerouting_time() <
-       config_.rerouting().cooldown_time())) {
+       config_.rerouting().cooldown_time())) {  // default: 3.0
     ADEBUG << "Skip rerouting and wait for previous rerouting result";
     return true;
   }

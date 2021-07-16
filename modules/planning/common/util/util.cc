@@ -50,7 +50,7 @@ bool IsDifferentRouting(const RoutingResponse& first,
   }
   return true;
 }
-
+// 计算以当前速度在目标距离刹停需要的加速度
 double GetADCStopDeceleration(
     apollo::common::VehicleStateProvider* vehicle_state,
     const double adc_front_edge_s, const double stop_line_s) {
@@ -58,7 +58,7 @@ double GetADCStopDeceleration(
   const double max_adc_stop_speed = common::VehicleConfigHelper::Instance()
                                         ->GetConfig()
                                         .vehicle_param()
-                                        .max_abs_speed_when_stopped();
+                                        .max_abs_speed_when_stopped();  // default: 0.2
   if (adc_speed < max_adc_stop_speed) {
     return 0.0;
   }

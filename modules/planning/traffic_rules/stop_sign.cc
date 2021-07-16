@@ -48,7 +48,7 @@ void StopSign::MakeDecisions(Frame* const frame,
   CHECK_NOTNULL(frame);
   CHECK_NOTNULL(reference_line_info);
 
-  if (!config_.stop_sign().enabled()) {
+  if (!config_.stop_sign().enabled()) {  // default: true
     return;
   }
 
@@ -59,10 +59,11 @@ void StopSign::MakeDecisions(Frame* const frame,
   const std::vector<PathOverlap>& stop_sign_overlaps =
       reference_line_info->reference_line().map_path().stop_sign_overlaps();
   for (const auto& stop_sign_overlap : stop_sign_overlaps) {
+    // 忽略adc后方的停止标志
     if (stop_sign_overlap.end_s <= adc_back_edge_s) {
       continue;
     }
-
+    // 忽略已经处理完成的停止标志
     if (stop_sign_overlap.object_id ==
         stop_sign_status.done_stop_sign_overlap_id()) {
       continue;
@@ -77,7 +78,7 @@ void StopSign::MakeDecisions(Frame* const frame,
         stop_sign_status.wait_for_obstacle_id().begin(),
         stop_sign_status.wait_for_obstacle_id().end());
     util::BuildStopDecision(virtual_obstacle_id, stop_sign_overlap.start_s,
-                            config_.stop_sign().stop_distance(),
+                            config_.stop_sign().stop_distance(),           // default: 1.0
                             StopReasonCode::STOP_REASON_STOP_SIGN,
                             wait_for_obstacle_ids,
                             TrafficRuleConfig::RuleId_Name(config_.rule_id()),

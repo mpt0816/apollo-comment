@@ -76,10 +76,11 @@ int Destination::MakeDecisions(Frame* frame,
     ADEBUG << "Destination at back, but we have not reached destination yet";
     return 0;
   }
-
+  // default: FLAGS_destination_obstacle_id = "DEST"
+  // "obstacle id for converting destination to an obstacle"
   const std::string stop_wall_id = FLAGS_destination_obstacle_id;
   const std::vector<std::string> wait_for_obstacle_ids;
-
+  // default: FLAGS_enable_scenario_pull_over = false
   if (FLAGS_enable_scenario_pull_over) {
     const auto& pull_over_status =
         injector_->planning_context()->planning_status().pull_over();
@@ -95,7 +96,7 @@ int Destination::MakeDecisions(Frame* frame,
                                  VehicleConfigHelper::GetConfig()
                                      .vehicle_param()
                                      .front_edge_to_center() +
-                                 config_.destination().stop_distance();
+                                 config_.destination().stop_distance();  // default: 0.5
       util::BuildStopDecision(
           stop_wall_id, stop_line_s, config_.destination().stop_distance(),
           StopReasonCode::STOP_REASON_PULL_OVER, wait_for_obstacle_ids,
@@ -107,6 +108,7 @@ int Destination::MakeDecisions(Frame* frame,
 
   // build stop decision
   ADEBUG << "BuildStopDecision: destination";
+  // default: FLAGS_virtual_stop_wall_length = 0.1
   const double dest_lane_s =
       std::fmax(0.0, routing_end.s() - FLAGS_virtual_stop_wall_length -
                          config_.destination().stop_distance());

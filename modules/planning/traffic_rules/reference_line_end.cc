@@ -48,15 +48,16 @@ Status ReferenceLineEnd::ApplyRule(
   double remain_s =
       reference_line.Length() - reference_line_info->AdcSlBoundary().end_s();
   if (remain_s >
-      config_.reference_line_end().min_reference_line_remain_length()) {
+      config_.reference_line_end().min_reference_line_remain_length()) {  // default: 50.0
     return Status::OK();
   }
 
   // create avirtual stop wall at the end of reference line to stop the adc
+  // 当参考线剩余长度小于50m时，在路径末端添加停止障碍物，保证adc行驶在参考线范围内
   std::string virtual_obstacle_id =
       REF_LINE_END_VO_ID_PREFIX + reference_line_info->Lanes().Id();
   double obstacle_start_s =
-      reference_line.Length() - 2 * FLAGS_virtual_stop_wall_length;
+      reference_line.Length() - 2 * FLAGS_virtual_stop_wall_length;  // default: 0.1
   auto* obstacle = frame->CreateStopObstacle(
       reference_line_info, virtual_obstacle_id, obstacle_start_s);
   if (!obstacle) {
@@ -71,6 +72,7 @@ Status ReferenceLineEnd::ApplyRule(
   }
 
   // build stop decision
+  // default: stop_distance = 0.5
   const double stop_line_s =
       obstacle_start_s - config_.reference_line_end().stop_distance();
   auto stop_point = reference_line.GetReferencePoint(stop_line_s);

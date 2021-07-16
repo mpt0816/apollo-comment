@@ -48,7 +48,7 @@ void YieldSign::MakeDecisions(Frame* const frame,
   CHECK_NOTNULL(frame);
   CHECK_NOTNULL(reference_line_info);
 
-  if (!config_.yield_sign().enabled()) {
+  if (!config_.yield_sign().enabled()) {  // default: true
     return;
   }
 
@@ -59,6 +59,7 @@ void YieldSign::MakeDecisions(Frame* const frame,
   const std::vector<PathOverlap>& yield_sign_overlaps =
       reference_line_info->reference_line().map_path().yield_sign_overlaps();
   for (const auto& yield_sign_overlap : yield_sign_overlaps) {
+    // 忽略adc后方的让行标志
     if (yield_sign_overlap.end_s <= adc_front_edge_s) {
       continue;
     }
@@ -85,7 +86,7 @@ void YieldSign::MakeDecisions(Frame* const frame,
         yield_sign_status.wait_for_obstacle_id().begin(),
         yield_sign_status.wait_for_obstacle_id().end());
     util::BuildStopDecision(virtual_obstacle_id, yield_sign_overlap.start_s,
-                            config_.yield_sign().stop_distance(),
+                            config_.yield_sign().stop_distance(),        // default: 1.0
                             StopReasonCode::STOP_REASON_YIELD_SIGN,
                             wait_for_obstacle_ids,
                             TrafficRuleConfig::RuleId_Name(config_.rule_id()),
