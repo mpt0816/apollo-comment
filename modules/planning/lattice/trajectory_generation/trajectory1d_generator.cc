@@ -61,6 +61,7 @@ void Trajectory1dGenerator::GenerateSpeedProfilesForCruising(
     const double target_speed,
     Trajectory1DBundle* ptr_lon_trajectory_bundle) const {
   ADEBUG << "cruise speed is  " << target_speed;
+  // 差不多有50个纵向采样
   auto end_conditions =
       end_condition_sampler_.SampleLonEndConditionsForCruising(target_speed);
   if (end_conditions.empty()) {
@@ -106,12 +107,15 @@ void Trajectory1dGenerator::GenerateLongitudinalTrajectoryBundle(
     const PlanningTarget& planning_target,
     Trajectory1DBundle* ptr_lon_trajectory_bundle) const {
   // cruising trajectories are planned regardlessly.
+  // 巡航工况的纵向采样，4次多项式
   GenerateSpeedProfilesForCruising(planning_target.cruise_speed(),
                                    ptr_lon_trajectory_bundle);
-
+  // overtake 和 follow 决策下的纵向采样，5次多项式
+  // 在每个障碍物的st上边界之上区域和下边界之下的区域进行采样，会生成大量的采样点
   GenerateSpeedProfilesForPathTimeObstacles(ptr_lon_trajectory_bundle);
 
   if (planning_target.has_stop_point()) {
+    // 停车工况的纵向采样，5次多项式，9条采样曲线
     GenerateSpeedProfilesForStopping(planning_target.stop_point().s(),
                                      ptr_lon_trajectory_bundle);
   }
@@ -119,18 +123,22 @@ void Trajectory1dGenerator::GenerateLongitudinalTrajectoryBundle(
 
 void Trajectory1dGenerator::GenerateLateralTrajectoryBundle(
     Trajectory1DBundle* ptr_lat_trajectory_bundle) const {
+  // default: FLAGS_lateral_optimization = true
   if (!FLAGS_lateral_optimization) {
     auto end_conditions = end_condition_sampler_.SampleLatEndConditions();
 
     // Use the common function to generate trajectory bundles.
+    // 生成12条采样曲线(五次多项式系数)
     GenerateTrajectory1DBundle<5>(init_lat_state_, end_conditions,
                                   ptr_lat_trajectory_bundle);
   } else {
     double s_min = init_lon_state_[0];
+    // default: FLAGS_max_s_lateral_optimization = 60.0m
+    // 对高速规划来说是不是有些短了？？
     double s_max = s_min + FLAGS_max_s_lateral_optimization;
-
+    // default: FLAGS_default_delta_s_lateral_optimization = 1.0m
     double delta_s = FLAGS_default_delta_s_lateral_optimization;
-
+    // 生成优化问题的边界约束
     auto lateral_bounds =
         ptr_path_time_graph_->GetLateralBounds(s_min, s_max, delta_s);
 
@@ -141,7 +149,7 @@ void Trajectory1dGenerator::GenerateLateralTrajectoryBundle(
     lateral_optimizer->optimize(init_lat_state_, delta_s, lateral_bounds);
 
     auto lateral_trajectory = lateral_optimizer->GetOptimalTrajectory();
-
+    // 生成1条采样曲线
     ptr_lat_trajectory_bundle->push_back(
         std::make_shared<PiecewiseJerkTrajectory1d>(lateral_trajectory));
   }

@@ -65,16 +65,20 @@ TrajectoryEvaluator::TrajectoryEvaluator(
     stop_point = planning_target.stop_point().s();
   }
   for (const auto& lon_trajectory : lon_trajectories) {
+    // 纵向采样的s值
     double lon_end_s = lon_trajectory->Evaluate(0, end_time);
+    // default: FLAGS_lattice_stop_buffer = 0.02
+    // 纵向采样终点超过停车点，删除此次采样
     if (init_s[0] < stop_point &&
         lon_end_s + FLAGS_lattice_stop_buffer > stop_point) {
       continue;
     }
-
+    // 检查纵向速度、加速度、加加速度是否满足最大边界约束
     if (!ConstraintChecker1d::IsValidLongitudinalTrajectory(*lon_trajectory)) {
       continue;
     }
     for (const auto& lat_trajectory : lat_trajectories) {
+      // 检查横向加速度、加加速度是否满足最大边界约束
       /**
        * The validity of the code needs to be verified.
       if (!ConstraintChecker1d::IsValidLateralTrajectory(*lat_trajectory,
@@ -137,6 +141,7 @@ double TrajectoryEvaluator::Evaluate(
       std::min(FLAGS_speed_lon_decision_horizon,
                lon_trajectory->Evaluate(0, lon_trajectory->ParamLength()));
   std::vector<double> s_values;
+  // default: FLAGS_trajectory_space_resolution = 1.0
   for (double s = 0.0; s < evaluation_horizon;
        s += FLAGS_trajectory_space_resolution) {
     s_values.emplace_back(s);
@@ -154,12 +159,12 @@ double TrajectoryEvaluator::Evaluate(
     cost_components->emplace_back(lat_offset_cost);
   }
 
-  return lon_objective_cost * FLAGS_weight_lon_objective +
-         lon_jerk_cost * FLAGS_weight_lon_jerk +
-         lon_collision_cost * FLAGS_weight_lon_collision +
-         centripetal_acc_cost * FLAGS_weight_centripetal_acceleration +
-         lat_offset_cost * FLAGS_weight_lat_offset +
-         lat_comfort_cost * FLAGS_weight_lat_comfort;
+  return lon_objective_cost * FLAGS_weight_lon_objective +  // default: 10.0
+         lon_jerk_cost * FLAGS_weight_lon_jerk +            // default: 1.0
+         lon_collision_cost * FLAGS_weight_lon_collision +  // default: 5.0
+         centripetal_acc_cost * FLAGS_weight_centripetal_acceleration + // default: 1.5
+         lat_offset_cost * FLAGS_weight_lat_offset +        // default: 2.0
+         lat_comfort_cost * FLAGS_weight_lat_comfort;       // default: 10.0
 }
 
 double TrajectoryEvaluator::LatOffsetCost(
@@ -170,12 +175,12 @@ double TrajectoryEvaluator::LatOffsetCost(
   double cost_abs_sum = 0.0;
   for (const auto& s : s_values) {
     double lat_offset = lat_trajectory->Evaluate(0, s);
-    double cost = lat_offset / FLAGS_lat_offset_bound;
+    double cost = lat_offset / FLAGS_lat_offset_bound;  // default: 3.0
     if (lat_offset * lat_offset_start < 0.0) {
-      cost_sqr_sum += cost * cost * FLAGS_weight_opposite_side_offset;
+      cost_sqr_sum += cost * cost * FLAGS_weight_opposite_side_offset;       // default: 10.0
       cost_abs_sum += std::fabs(cost) * FLAGS_weight_opposite_side_offset;
     } else {
-      cost_sqr_sum += cost * cost * FLAGS_weight_same_side_offset;
+      cost_sqr_sum += cost * cost * FLAGS_weight_same_side_offset;     // default: 1.0
       cost_abs_sum += std::fabs(cost) * FLAGS_weight_same_side_offset;
     }
   }
@@ -234,8 +239,8 @@ double TrajectoryEvaluator::LonObjectiveCost(
   double speed_cost =
       speed_cost_sqr_sum / (speed_cost_weight_sum + FLAGS_numerical_epsilon);
   double dist_travelled_cost = 1.0 / (1.0 + dist_s);
-  return (speed_cost * FLAGS_weight_target_speed +
-          dist_travelled_cost * FLAGS_weight_dist_travelled) /
+  return (speed_cost * FLAGS_weight_target_speed +                 // default: 1.0
+          dist_travelled_cost * FLAGS_weight_dist_travelled) /     // default: 10.0
          (FLAGS_weight_target_speed + FLAGS_weight_dist_travelled);
 }
 
@@ -252,12 +257,12 @@ double TrajectoryEvaluator::LonCollisionCost(
     }
     double t = static_cast<double>(i) * FLAGS_trajectory_time_resolution;
     double traj_s = lon_trajectory->Evaluate(0, t);
-    double sigma = FLAGS_lon_collision_cost_std;
+    double sigma = FLAGS_lon_collision_cost_std;  // default: 0.5
     for (const auto& m : pt_interval) {
       double dist = 0.0;
-      if (traj_s < m.first - FLAGS_lon_collision_yield_buffer) {
+      if (traj_s < m.first - FLAGS_lon_collision_yield_buffer) {  // default: 1.0
         dist = m.first - FLAGS_lon_collision_yield_buffer - traj_s;
-      } else if (traj_s > m.second + FLAGS_lon_collision_overtake_buffer) {
+      } else if (traj_s > m.second + FLAGS_lon_collision_overtake_buffer) { // default: 5.0
         dist = traj_s - m.second - FLAGS_lon_collision_overtake_buffer;
       }
       double cost = std::exp(-dist * dist / (2.0 * sigma * sigma));
@@ -294,7 +299,7 @@ std::vector<double> TrajectoryEvaluator::ComputeLongitudinalGuideVelocity(
   std::vector<double> reference_s_dot;
 
   double cruise_v = planning_target.cruise_speed();
-
+  // 没有停车决策，按照车辆匀速行驶计算参考速度
   if (!planning_target.has_stop_point()) {
     PiecewiseAccelerationTrajectory1d lon_traj(init_s_[0], cruise_v);
     lon_traj.AppendSegment(
@@ -307,6 +312,7 @@ std::vector<double> TrajectoryEvaluator::ComputeLongitudinalGuideVelocity(
   } else {
     double dist_s = planning_target.stop_point().s() - init_s_[0];
     if (dist_s < FLAGS_numerical_epsilon) {
+      // 初始化有问题吧？ init_s_[0]？？
       PiecewiseAccelerationTrajectory1d lon_traj(init_s_[0], 0.0);
       lon_traj.AppendSegment(
           0.0, FLAGS_trajectory_time_length + FLAGS_numerical_epsilon);
@@ -318,9 +324,9 @@ std::vector<double> TrajectoryEvaluator::ComputeLongitudinalGuideVelocity(
       return reference_s_dot;
     }
 
-    double a_comfort = FLAGS_longitudinal_acceleration_upper_bound *
-                       FLAGS_comfort_acceleration_factor;
-    double d_comfort = -FLAGS_longitudinal_acceleration_lower_bound *
+    double a_comfort = FLAGS_longitudinal_acceleration_upper_bound *  // default: 4.0
+                       FLAGS_comfort_acceleration_factor;             // default: 0.5
+    double d_comfort = -FLAGS_longitudinal_acceleration_lower_bound * // default: -6.0
                        FLAGS_comfort_acceleration_factor;
 
     std::shared_ptr<Trajectory1d> lon_ref_trajectory =

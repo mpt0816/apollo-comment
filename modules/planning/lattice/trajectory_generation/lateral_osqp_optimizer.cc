@@ -33,6 +33,9 @@ bool LateralOSQPOptimizer::optimize(
   delta_s_ = delta_s;
   const int num_var = static_cast<int>(d_bounds.size());
   const int kNumParam = 3 * static_cast<int>(d_bounds.size());
+  // 上下边界约束数目： kNumParam
+  // 等式约束数目： 3 * (num_var - 1)
+  // 初始状态约束数目： 3
   const int kNumConstraint = kNumParam + 3 * (num_var - 1) + 3;
   c_float lower_bounds[kNumConstraint];
   c_float upper_bounds[kNumConstraint];
@@ -197,6 +200,9 @@ void LateralOSQPOptimizer::CalculateKernel(
     const std::vector<std::pair<double, double>>& d_bounds,
     std::vector<c_float>* P_data, std::vector<c_int>* P_indices,
     std::vector<c_int>* P_indptr) {
+  // 优化变量为 d, d`, d``
+  // cost function: J = w_d * sum(d_i) + w_d` * sum(d`_i) + w_d`` * sum(d``_i) + w_o * sum(d_i - (d_l+d_u)/2)
+  // 矩阵P是对角矩阵
   const int kNumParam = 3 * static_cast<int>(d_bounds.size());
   P_data->resize(kNumParam);
   P_indices->resize(kNumParam);
@@ -204,12 +210,13 @@ void LateralOSQPOptimizer::CalculateKernel(
 
   for (int i = 0; i < kNumParam; ++i) {
     if (i < static_cast<int>(d_bounds.size())) {
+      // defautl: FLAGS_weight_lateral_offset = 1.0
       P_data->at(i) = 2.0 * FLAGS_weight_lateral_offset +
-                      2.0 * FLAGS_weight_lateral_obstacle_distance;
+                      2.0 * FLAGS_weight_lateral_obstacle_distance;   // default: 0.0
     } else if (i < 2 * static_cast<int>(d_bounds.size())) {
-      P_data->at(i) = 2.0 * FLAGS_weight_lateral_derivative;
+      P_data->at(i) = 2.0 * FLAGS_weight_lateral_derivative;  // default: 500.0
     } else {
-      P_data->at(i) = 2.0 * FLAGS_weight_lateral_second_order_derivative;
+      P_data->at(i) = 2.0 * FLAGS_weight_lateral_second_order_derivative;  // default: 1000.0
     }
     P_indices->at(i) = i;
     P_indptr->at(i) = i;

@@ -39,6 +39,7 @@ bool ConstraintChecker1d::IsValidLongitudinalTrajectory(
   double t = 0.0;
   while (t < lon_trajectory.ParamLength()) {
     double v = lon_trajectory.Evaluate(1, t);  // evaluate_v
+    // default: FLAGS_speed_lower_bound = -0.1, FLAGS_speed_upper_bound = 40.0
     if (!fuzzy_within(v, FLAGS_speed_lower_bound, FLAGS_speed_upper_bound)) {
       return false;
     }
@@ -50,11 +51,11 @@ bool ConstraintChecker1d::IsValidLongitudinalTrajectory(
     }
 
     double j = lon_trajectory.Evaluate(3, t);
-    if (!fuzzy_within(j, FLAGS_longitudinal_jerk_lower_bound,
-                      FLAGS_longitudinal_jerk_upper_bound)) {
+    if (!fuzzy_within(j, FLAGS_longitudinal_jerk_lower_bound,  // default: -4.0
+                      FLAGS_longitudinal_jerk_upper_bound)) {  // default: 2.0
       return false;
     }
-    t += FLAGS_trajectory_time_resolution;
+    t += FLAGS_trajectory_time_resolution;  // default: 0.1
   }
   return true;
 }
@@ -71,11 +72,12 @@ bool ConstraintChecker1d::IsValidLateralTrajectory(
     double d2s_dt2 = lon_trajectory.Evaluate(2, t);
 
     double a = 0.0;
+    // 转换成横向距离对时间的倒数，即横向加速度
     if (s < lat_trajectory.ParamLength()) {
       a = d2d_ds2 * ds_dt * ds_dt + dd_ds * d2s_dt2;
     }
 
-    if (!fuzzy_within(a, -FLAGS_lateral_acceleration_bound,
+    if (!fuzzy_within(a, -FLAGS_lateral_acceleration_bound,  // default: 4.0
                       FLAGS_lateral_acceleration_bound)) {
       return false;
     }
@@ -86,7 +88,7 @@ bool ConstraintChecker1d::IsValidLateralTrajectory(
       j = lat_trajectory.Evaluate(3, s) * lon_trajectory.Evaluate(3, t);
     }
 
-    if (!fuzzy_within(j, -FLAGS_lateral_jerk_bound, FLAGS_lateral_jerk_bound)) {
+    if (!fuzzy_within(j, -FLAGS_lateral_jerk_bound, FLAGS_lateral_jerk_bound)) { // default: 4.0
       return false;
     }
     t += FLAGS_trajectory_time_resolution;

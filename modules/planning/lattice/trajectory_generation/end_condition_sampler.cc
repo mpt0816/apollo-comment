@@ -57,6 +57,7 @@ std::vector<Condition> EndConditionSampler::SampleLatEndConditions() const {
 
 std::vector<Condition> EndConditionSampler::SampleLonEndConditionsForCruising(
     const double ref_cruise_speed) const {
+  // default: FLAGS_num_velocity_sample = 6
   CHECK_GT(FLAGS_num_velocity_sample, 1U);
 
   // time interval is one second plus the last one 0.01
@@ -68,9 +69,10 @@ std::vector<Condition> EndConditionSampler::SampleLonEndConditionsForCruising(
     time_samples[i] = FLAGS_trajectory_time_length * ratio;
   }
   time_samples[0] = FLAGS_polynomial_minimal_param;
-
+  // time_samples = [0.01, 1, 2, 3, 4, 5, 6, 7, 8]
   std::vector<Condition> end_s_conditions;
   for (const auto& time : time_samples) {
+    // 根据最大加速度和初始状态计算adc的最大速度范围
     double v_upper = std::min(feasible_region_.VUpper(time), ref_cruise_speed);
     double v_lower = feasible_region_.VLower(time);
 
@@ -82,6 +84,7 @@ std::vector<Condition> EndConditionSampler::SampleLonEndConditionsForCruising(
 
     double v_range = v_upper - v_lower;
     // Number of sample velocities
+    // default: FLAGS_min_velocity_sample_gap = 1.0
     size_t num_of_mid_points =
         std::min(static_cast<size_t>(FLAGS_num_velocity_sample - 2),
                  static_cast<size_t>(v_range / FLAGS_min_velocity_sample_gap));
@@ -125,6 +128,7 @@ EndConditionSampler::SampleLonEndConditionsForPathTimePoints() const {
 
   std::vector<SamplePoint> sample_points = QueryPathTimeObstacleSamplePoints();
   for (const SamplePoint& sample_point : sample_points) {
+    // default: FLAGS_polynomial_minimal_param = 0.01
     if (sample_point.path_time_point.t() < FLAGS_polynomial_minimal_param) {
       continue;
     }
@@ -157,6 +161,7 @@ EndConditionSampler::QueryPathTimeObstacleSamplePoints() const {
 void EndConditionSampler::QueryFollowPathTimePoints(
     const common::VehicleConfig& vehicle_config, const std::string& obstacle_id,
     std::vector<SamplePoint>* const sample_points) const {
+  // default: FLAGS_time_min_density = 1.0
   std::vector<STPoint> follow_path_time_points =
       ptr_path_time_graph_->GetObstacleSurroundingPoints(
           obstacle_id, -FLAGS_numerical_epsilon, FLAGS_time_min_density);
@@ -167,11 +172,12 @@ void EndConditionSampler::QueryFollowPathTimePoints(
     // Generate candidate s
     double s_upper = path_time_point.s() -
                      vehicle_config.vehicle_param().front_edge_to_center();
-    double s_lower = s_upper - FLAGS_default_lon_buffer;
-    CHECK_GE(FLAGS_num_sample_follow_per_timestamp, 2U);
+    // 在障碍物后5m范围内采样，即对障碍物的跟随距离
+    double s_lower = s_upper - FLAGS_default_lon_buffer;  // default: 5.0
+    CHECK_GE(FLAGS_num_sample_follow_per_timestamp, 2U);  // default: 3
     double s_gap =
         FLAGS_default_lon_buffer /
-        static_cast<double>(FLAGS_num_sample_follow_per_timestamp - 1);
+        static_cast<double>(FLAGS_num_sample_follow_per_timestamp - 1);  // default: 3
     for (size_t i = 0; i < FLAGS_num_sample_follow_per_timestamp; ++i) {
       double s = s_lower + s_gap * static_cast<double>(i);
       SamplePoint sample_point;
@@ -195,6 +201,7 @@ void EndConditionSampler::QueryOvertakePathTimePoints(
         obstacle_id, path_time_point.s(), path_time_point.t());
     SamplePoint sample_point;
     sample_point.path_time_point = path_time_point;
+    // 在障碍物前5m处进行采样，应该再加上后轴中心到车尾的距离吧？？？
     sample_point.path_time_point.set_s(path_time_point.s() +
                                        FLAGS_default_lon_buffer);
     sample_point.ref_v = v;

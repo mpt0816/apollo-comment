@@ -34,7 +34,7 @@ FeasibleRegion::FeasibleRegion(const std::array<double, 3>& init_s) {
   double v = init_s[1];
   CHECK_GE(v, 0.0);
 
-  const double max_deceleration = -FLAGS_longitudinal_acceleration_lower_bound;
+  const double max_deceleration = -FLAGS_longitudinal_acceleration_lower_bound;  // default: -6.0
   t_at_zero_speed_ = v / max_deceleration;
   s_at_zero_speed_ = init_s[0] + v * v / (2.0 * max_deceleration);
 }
@@ -42,7 +42,7 @@ FeasibleRegion::FeasibleRegion(const std::array<double, 3>& init_s) {
 double FeasibleRegion::SUpper(const double t) const {
   ACHECK(t >= 0.0);
   return init_s_[0] + init_s_[1] * t +
-         0.5 * FLAGS_longitudinal_acceleration_upper_bound * t * t;
+         0.5 * FLAGS_longitudinal_acceleration_upper_bound * t * t;  // default: 4.0
 }
 
 double FeasibleRegion::SLower(const double t) const {

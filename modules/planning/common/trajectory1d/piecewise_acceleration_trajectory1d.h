@@ -28,7 +28,11 @@
 
 namespace apollo {
 namespace planning {
-
+// 分段匀加速
+/*   |t0 --- a0 ---|t1 --- a1 ---| ... |tn --- an---|
+ *    s0 ----------|s1 ----------| ... |sn ---------|
+ *    v0 ----------|v1 ----------| ... |vn ---------|
+ */
 class PiecewiseAccelerationTrajectory1d : public Curve1d {
  public:
   PiecewiseAccelerationTrajectory1d(const double start_s, const double start_v);

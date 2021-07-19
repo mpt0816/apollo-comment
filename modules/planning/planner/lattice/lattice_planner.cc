@@ -100,7 +100,7 @@ Status LatticePlanner::Plan(const TrajectoryPoint& planning_start_point,
   for (auto& reference_line_info : *frame->mutable_reference_line_info()) {
     if (index != 0) {
       reference_line_info.SetPriorityCost(
-          FLAGS_cost_non_priority_reference_line);
+          FLAGS_cost_non_priority_reference_line);  // default: 5.0
     } else {
       reference_line_info.SetPriorityCost(0.0);
     }
@@ -148,6 +148,7 @@ Status LatticePlanner::PlanOnReferenceLine(
 
   // 2. compute the matched point of the init planning point on the reference
   // line.
+  // 计算规划起点在参考线上的最近点(垂足点)
   PathPoint matched_point = PathMatcher::MatchToPath(
       *ptr_reference_line, planning_init_point.path_point().x(),
       planning_init_point.path_point().y());
@@ -165,6 +166,7 @@ Status LatticePlanner::PlanOnReferenceLine(
       frame->obstacles(), ptr_reference_line);
 
   // 4. parse the decision and get the planning target.
+  // default: FLAGS_speed_lon_decision_horizon = 200.0m
   auto ptr_path_time_graph = std::make_shared<PathTimeGraph>(
       ptr_prediction_querier->GetObstacles(), *ptr_reference_line,
       reference_line_info, init_s[0],
@@ -235,6 +237,7 @@ Status LatticePlanner::PlanOnReferenceLine(
   size_t num_lattice_traj = 0;
 
   while (trajectory_evaluator.has_more_trajectory_pairs()) {
+    // 获取cost最小的横纵向采样的cost值和横纵向采样
     double trajectory_pair_cost =
         trajectory_evaluator.top_trajectory_pair_cost();
     auto trajectory_pair = trajectory_evaluator.next_top_trajectory_pair();
@@ -355,8 +358,9 @@ Status LatticePlanner::PlanOnReferenceLine(
     return Status::OK();
   } else {
     AERROR << "Planning failed";
-    if (FLAGS_enable_backup_trajectory) {
+    if (FLAGS_enable_backup_trajectory) {  // default: true
       AERROR << "Use backup trajectory";
+      // 纵向以恒定加速度减速停车
       BackupTrajectoryGenerator backup_trajectory_generator(
           init_s, init_d, planning_init_point.relative_time(),
           std::make_shared<CollisionChecker>(collision_checker),

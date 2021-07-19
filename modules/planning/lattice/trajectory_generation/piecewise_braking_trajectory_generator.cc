@@ -42,8 +42,9 @@ std::shared_ptr<Curve1d> PiecewiseBrakingTrajectoryGenerator::Generate(
   if (comfort_stop_dist > s_dist) {
     double stop_d = ComputeStopDeceleration(s_dist, v_curr);
     double stop_t = v_curr / stop_d;
+    // 第一段的加速度为-stop_d，持续时间stop_t
     ptr_trajectory->AppendSegment(-stop_d, stop_t);
-
+    // 在规划时间内可以刹停，剩下的时间加速度为0，即静止不动
     if (ptr_trajectory->ParamLength() < max_time) {
       ptr_trajectory->AppendSegment(0.0,
                                     max_time - ptr_trajectory->ParamLength());
@@ -56,11 +57,13 @@ std::shared_ptr<Curve1d> PiecewiseBrakingTrajectoryGenerator::Generate(
     double t_cruise = (s_dist - comfort_stop_dist) / v_target;
     double t_rampdown = (v_curr - v_target) / d_comfort;
     double t_dec = v_target / d_comfort;
-
+    // 先由当前速度减速到目标速度
     ptr_trajectory->AppendSegment(-d_comfort, t_rampdown);
+    // 再以目标速度巡航
     ptr_trajectory->AppendSegment(0.0, t_cruise);
+    // 最后减速到0
     ptr_trajectory->AppendSegment(-d_comfort, t_dec);
-
+    // 在规划时间内可以刹停，剩下的时间加速度为0，即静止不动
     if (ptr_trajectory->ParamLength() < max_time) {
       ptr_trajectory->AppendSegment(0.0,
                                     max_time - ptr_trajectory->ParamLength());
@@ -78,10 +81,13 @@ std::shared_ptr<Curve1d> PiecewiseBrakingTrajectoryGenerator::Generate(
       double t_dec = v_target / d_comfort;
 
       // construct the trajectory
+      // 先加速到目标车速
       ptr_trajectory->AppendSegment(a_comfort, t_rampup);
+      // 再以目标车速运行行驶
       ptr_trajectory->AppendSegment(0.0, t_cruise);
+      // 从目标车速减速至0
       ptr_trajectory->AppendSegment(-d_comfort, t_dec);
-
+      // 在规划时间内可以刹停，剩下的时间加速度为0，即静止不动
       if (ptr_trajectory->ParamLength() < max_time) {
         ptr_trajectory->AppendSegment(0.0,
                                       max_time - ptr_trajectory->ParamLength());
@@ -97,9 +103,11 @@ std::shared_ptr<Curve1d> PiecewiseBrakingTrajectoryGenerator::Generate(
       double t_dec = v_max / d_comfort;
 
       // construct the trajectory
+      // 先加速到最大允许速度
       ptr_trajectory->AppendSegment(a_comfort, t_acc);
+      // 从最大速度加速至0
       ptr_trajectory->AppendSegment(-d_comfort, t_dec);
-
+      // 在规划时间内可以刹停，剩下的时间加速度为0，即静止不动
       if (ptr_trajectory->ParamLength() < max_time) {
         ptr_trajectory->AppendSegment(0.0,
                                       max_time - ptr_trajectory->ParamLength());

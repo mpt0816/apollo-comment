@@ -47,13 +47,14 @@ DiscretizedTrajectory TrajectoryCombiner::Combine(
     // no worry about t_param > lon_trajectory.ParamLength() situation
     double s = lon_trajectory.Evaluate(0, t_param);
     if (last_s > 0.0) {
-      s = std::max(last_s, s);
+      s = std::max(last_s, s);  // 不考虑倒车工况，所以s是单调递增的
     }
     last_s = s;
 
     double s_dot =
         std::max(FLAGS_numerical_epsilon, lon_trajectory.Evaluate(1, t_param));
     double s_ddot = lon_trajectory.Evaluate(2, t_param);
+    // 纵向采样长度不能超过参考线的长度
     if (s > s_ref_max) {
       break;
     }
@@ -83,6 +84,7 @@ DiscretizedTrajectory TrajectoryCombiner::Combine(
 
     std::array<double, 3> s_conditions = {rs, s_dot, s_ddot};
     std::array<double, 3> d_conditions = {d, d_prime, d_pprime};
+    // 将frenet坐标系下的采样点转换为笛卡尔坐标系下的坐标
     CartesianFrenetConverter::frenet_to_cartesian(
         rs, rx, ry, rtheta, rkappa, rdkappa, s_conditions, d_conditions, &x, &y,
         &theta, &kappa, &v, &a);

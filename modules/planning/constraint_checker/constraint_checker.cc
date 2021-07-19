@@ -61,7 +61,7 @@ ConstraintChecker::Result ConstraintChecker::ValidTrajectory(
     }
 
     double kappa = p.path_point().kappa();
-    if (!WithinRange(kappa, -FLAGS_kappa_bound, FLAGS_kappa_bound)) {
+    if (!WithinRange(kappa, -FLAGS_kappa_bound, FLAGS_kappa_bound)) {  // default: 0.1979
       ADEBUG << "Kappa at relative time " << t
              << " exceeds bound, value: " << kappa << ", bound ["
              << -FLAGS_kappa_bound << ", " << FLAGS_kappa_bound << "].";
