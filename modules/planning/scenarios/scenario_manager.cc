@@ -133,12 +133,17 @@ std::unique_ptr<Scenario> ScenarioManager::CreateScenario(
 
 void ScenarioManager::RegisterScenarios() {
   // lane_follow
+  // default: learning_mode = NO_LEARNING
   if (planning_config_.learning_mode() == PlanningConfig::HYBRID ||
       planning_config_.learning_mode() == PlanningConfig::HYBRID_TEST) {
     // HYBRID or HYBRID_TEST
+    // default: FLAGS_scenario_lane_follow_hybrid_config_file = 
+    // "/apollo/modules/planning/conf/scenario/lane_follow_hybrid_config.pb.txt"
     ACHECK(Scenario::LoadConfig(FLAGS_scenario_lane_follow_hybrid_config_file,
                                 &config_map_[ScenarioConfig::LANE_FOLLOW]));
   } else {
+    // default: FLAGS_scenario_lane_follow_hybrid_config_file = 
+    // "/apollo/modules/planning/conf/scenario/lane_follow_config.pb.txt"
     ACHECK(Scenario::LoadConfig(FLAGS_scenario_lane_follow_config_file,
                                 &config_map_[ScenarioConfig::LANE_FOLLOW]));
   }
@@ -217,21 +222,22 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectPullOverScenario(
   bool pull_over_scenario =
       (frame.reference_line_info().size() == 1 &&  // NO, while changing lane
        adc_distance_to_dest >=
-           scenario_config.pull_over_min_distance_buffer() &&
+           scenario_config.pull_over_min_distance_buffer() &&  // default: 10.0m
        adc_distance_to_dest <=
-           scenario_config.start_pull_over_scenario_distance());
+           scenario_config.start_pull_over_scenario_distance());  // default: 50.0m
 
   // too close to destination + not found pull-over position
   if (pull_over_scenario) {
     const auto& pull_over_status =
         injector_->planning_context()->planning_status().pull_over();
-    if (adc_distance_to_dest < scenario_config.max_distance_stop_search() &&
+    if (adc_distance_to_dest < scenario_config.max_distance_stop_search() && // default: 25.0
         !pull_over_status.has_position()) {
       pull_over_scenario = false;
     }
   }
 
   // check around junction
+  // adc不能停在junction附近
   if (pull_over_scenario) {
     static constexpr double kDistanceToAvoidJunction = 8.0;  // meter
     for (const auto& overlap : first_encountered_overlap_map_) {
@@ -252,6 +258,7 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectPullOverScenario(
   }
 
   // check rightmost driving lane along pull-over path
+  // 靠边停车时，最右侧车道不能是CITY_DRIVING
   if (pull_over_scenario) {
     double check_s = adc_front_edge_s;
     static constexpr double kDistanceUnit = 5.0;
@@ -331,12 +338,12 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectPadMsgScenario(
 
   switch (pad_msg_driving_action) {
     case DrivingAction::PULL_OVER:
-      if (FLAGS_enable_scenario_emergency_pull_over) {
+      if (FLAGS_enable_scenario_emergency_pull_over) {  // default: true
         return ScenarioConfig::EMERGENCY_PULL_OVER;
       }
       break;
     case DrivingAction::STOP:
-      if (FLAGS_enable_scenario_emergency_stop) {
+      if (FLAGS_enable_scenario_emergency_stop) {       // default: true
         return ScenarioConfig::EMERGENCY_STOP;
       }
       break;
@@ -380,6 +387,7 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectIntersectionScenario(
   }
 
   // pick a closer one between consecutive bare_intersection and traffic_sign
+  // 两种pathover都有，但相距较远(10m)，只处理最近的pathover
   if (traffic_sign_overlap && pnc_junction_overlap) {
     static constexpr double kJunctionDelta = 10.0;
     double s_diff = std::fabs(traffic_sign_overlap->start_s -
@@ -396,18 +404,18 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectIntersectionScenario(
   if (traffic_sign_overlap) {
     switch (overlap_type) {
       case ReferenceLineInfo::STOP_SIGN:
-        if (FLAGS_enable_scenario_stop_sign) {
+        if (FLAGS_enable_scenario_stop_sign) {  // default: true
           scenario_type = SelectStopSignScenario(frame, *traffic_sign_overlap);
         }
         break;
       case ReferenceLineInfo::SIGNAL:
-        if (FLAGS_enable_scenario_traffic_light) {
+        if (FLAGS_enable_scenario_traffic_light) {  // default: true
           scenario_type =
               SelectTrafficLightScenario(frame, *traffic_sign_overlap);
         }
         break;
       case ReferenceLineInfo::YIELD_SIGN:
-        if (FLAGS_enable_scenario_yield_sign) {
+        if (FLAGS_enable_scenario_yield_sign) {  // default: true
           scenario_type = SelectYieldSignScenario(frame, *traffic_sign_overlap);
         }
         break;
@@ -416,7 +424,7 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectIntersectionScenario(
     }
   } else if (pnc_junction_overlap) {
     // bare intersection
-    if (FLAGS_enable_scenario_bare_intersection) {
+    if (FLAGS_enable_scenario_bare_intersection) {  // default: true
       scenario_type =
           SelectBareIntersectionScenario(frame, *pnc_junction_overlap);
     }
@@ -442,18 +450,21 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectStopSignScenario(
   const bool stop_sign_scenario =
       (adc_distance_to_stop_sign > 0.0 &&
        adc_distance_to_stop_sign <=
-           scenario_config.start_stop_sign_scenario_distance());
+           scenario_config.start_stop_sign_scenario_distance());  // default: 4.0
   const bool stop_sign_all_way = false;  // TODO(all)
 
   switch (current_scenario_->scenario_type()) {
+    // 可以打断进入stop sign的场景
     case ScenarioConfig::LANE_FOLLOW:
     case ScenarioConfig::PARK_AND_GO:
     case ScenarioConfig::PULL_OVER:
+      // 永远都是有保护情况
       if (stop_sign_scenario) {
         return stop_sign_all_way ? ScenarioConfig::STOP_SIGN_PROTECTED
                                  : ScenarioConfig::STOP_SIGN_UNPROTECTED;
       }
       break;
+    // 不可打断的未执行完毕的场景
     case ScenarioConfig::BARE_INTERSECTION_UNPROTECTED:
     case ScenarioConfig::EMERGENCY_PULL_OVER:
     case ScenarioConfig::STOP_SIGN_PROTECTED:
@@ -478,16 +489,17 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectStopSignScenario(
 ScenarioConfig::ScenarioType ScenarioManager::SelectTrafficLightScenario(
     const Frame& frame, const hdmap::PathOverlap& traffic_light_overlap) {
   // some scenario may need start sooner than the others
+  // 无保护左转场景需要提前进入
   const double start_check_distance = std::max(
       {config_map_[ScenarioConfig::TRAFFIC_LIGHT_PROTECTED]
            .traffic_light_protected_config()
-           .start_traffic_light_scenario_distance(),
+           .start_traffic_light_scenario_distance(),  // default: 5.0
        config_map_[ScenarioConfig::TRAFFIC_LIGHT_UNPROTECTED_LEFT_TURN]
            .traffic_light_unprotected_left_turn_config()
-           .start_traffic_light_scenario_distance(),
+           .start_traffic_light_scenario_distance(),  // default: 30.0
        config_map_[ScenarioConfig::TRAFFIC_LIGHT_UNPROTECTED_RIGHT_TURN]
            .traffic_light_unprotected_right_turn_config()
-           .start_traffic_light_scenario_distance()});
+           .start_traffic_light_scenario_distance()});  // default: 5.0
 
   const auto& reference_line_info = frame.reference_line_info().front();
   const double adc_front_edge_s = reference_line_info.AdcSlBoundary().end_s();
@@ -550,6 +562,7 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectTrafficLightScenario(
 
     if (right_turn && red_light) {
       // check TRAFFIC_LIGHT_UNPROTECTED_RIGHT_TURN
+      // 车道既可以左转又可以右转，则认为是无保护右转路口
       const auto& scenario_config =
           config_map_[ScenarioConfig::TRAFFIC_LIGHT_UNPROTECTED_RIGHT_TURN]
               .traffic_light_unprotected_right_turn_config();
@@ -629,7 +642,7 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectYieldSignScenario(
   const bool yield_sign_scenario =
       (adc_distance_to_yield_sign > 0.0 &&
        adc_distance_to_yield_sign <=
-           scenario_config.start_yield_sign_scenario_distance());
+           scenario_config.start_yield_sign_scenario_distance());  // default: 10.0m
 
   switch (current_scenario_->scenario_type()) {
     case ScenarioConfig::LANE_FOLLOW:
@@ -683,7 +696,7 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectBareIntersectionScenario(
   const bool bare_junction_scenario =
       (adc_distance_to_pnc_junction > 0.0 &&
        adc_distance_to_pnc_junction <=
-           scenario_config.start_bare_intersection_scenario_distance());
+           scenario_config.start_bare_intersection_scenario_distance()); // default: 25.0m
 
   switch (current_scenario_->scenario_type()) {
     case ScenarioConfig::LANE_FOLLOW:
@@ -721,7 +734,7 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectValetParkingScenario(
 
   // TODO(All) trigger valet parking by route message definition as of now
   double parking_spot_range_to_start =
-      scenario_config.parking_spot_range_to_start();
+      scenario_config.parking_spot_range_to_start();  // default: 20.0
   if (scenario::valet_parking::ValetParkingScenario::IsTransferable(
           frame, parking_spot_range_to_start)) {
     return ScenarioConfig::VALET_PARKING;
@@ -746,7 +759,7 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectParkAndGoScenario(
       common::VehicleConfigHelper::Instance()
           ->GetConfig()
           .vehicle_param()
-          .max_abs_speed_when_stopped();
+          .max_abs_speed_when_stopped();   // default: 0.2
 
   hdmap::LaneInfoConstPtr lane;
 
@@ -764,7 +777,7 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectParkAndGoScenario(
   // if vehicle is static, far enough to destination and (off-lane or not on
   // city_driving lane)
   if (std::fabs(adc_speed) < max_abs_speed_when_stopped &&
-      adc_distance_to_dest > scenario_config.min_dist_to_dest() &&
+      adc_distance_to_dest > scenario_config.min_dist_to_dest() &&   // default: 10.0
       (HDMapUtil::BaseMap().GetNearestLaneWithHeading(
            adc_point, 2.0, vehicle_state.heading(), M_PI / 3.0, &lane, &s,
            &l) != 0 ||
@@ -782,6 +795,7 @@ ScenarioConfig::ScenarioType ScenarioManager::SelectParkAndGoScenario(
 void ScenarioManager::Observe(const Frame& frame) {
   // init first_encountered_overlap_map_
   first_encountered_overlap_map_.clear();
+  // 所有的参考线都在一条road上，road上的pathover是一样的
   const auto& reference_line_info = frame.reference_line_info().front();
   const auto& first_encountered_overlaps =
       reference_line_info.FirstEncounteredOverlaps();
@@ -851,13 +865,15 @@ ScenarioConfig::ScenarioType ScenarioManager::ScenarioDispatchNonLearning(
   ////////////////////////////////////////
   // Pad Msg scenario
   scenario_type = SelectPadMsgScenario(frame);
-
+  // scenario_type仍是默认场景说明上一步没有进行场景配置
   if (scenario_type == default_scenario_type_) {
     // check current_scenario (not switchable)
     switch (current_scenario_->scenario_type()) {
+      // 当前场景是LANE_FOLLOW或者PULL_OVER，则可以当前目前场景进入其他场景
       case ScenarioConfig::LANE_FOLLOW:
       case ScenarioConfig::PULL_OVER:
         break;
+      // 以下场景在未执行完成前不能被打断
       case ScenarioConfig::BARE_INTERSECTION_UNPROTECTED:
       case ScenarioConfig::EMERGENCY_PULL_OVER:
       case ScenarioConfig::PARK_AND_GO:
@@ -882,7 +898,7 @@ ScenarioConfig::ScenarioType ScenarioManager::ScenarioDispatchNonLearning(
   ////////////////////////////////////////
   // ParkAndGo / starting scenario
   if (scenario_type == default_scenario_type_) {
-    if (FLAGS_enable_scenario_park_and_go) {
+    if (FLAGS_enable_scenario_park_and_go) {    // default: true
       scenario_type = SelectParkAndGoScenario(frame);
     }
   }

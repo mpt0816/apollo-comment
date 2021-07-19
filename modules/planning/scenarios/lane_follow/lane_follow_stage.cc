@@ -120,6 +120,7 @@ Stage::StageStatus LaneFollowStage::Process(
         ADEBUG << "reference line is lane change ref.";
         ADEBUG << "FLAGS_enable_smarter_lane_change: "
                << FLAGS_enable_smarter_lane_change;
+        // default: FLAGS_enable_smarter_lane_change = false
         if (reference_line_info.Cost() < kStraightForwardLineCost &&
             (LaneChangeDecider::IsClearToChangeLane(&reference_line_info) ||
              FLAGS_enable_smarter_lane_change)) {
@@ -216,7 +217,7 @@ Status LaneFollowStage::PlanOnReferenceLine(
       dest_stop_s = dest_sl.s();
     }
   }
-
+  // 设置因为obstacle造成的停车的cost
   for (const auto* obstacle :
        reference_line_info->path_decision()->obstacles().Items()) {
     if (obstacle->IsVirtual()) {
@@ -242,7 +243,7 @@ Status LaneFollowStage::PlanOnReferenceLine(
       }
     }
   }
-
+  // default: FLAGS_enable_trajectory_check = false
   if (FLAGS_enable_trajectory_check) {
     if (ConstraintChecker::ValidTrajectory(trajectory) !=
         ConstraintChecker::Result::VALID) {

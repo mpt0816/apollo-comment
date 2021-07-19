@@ -120,6 +120,7 @@ bool Stage::ExecuteTaskOnReferenceLine(
       reference_line_info.set_trajectory_type(ADCTrajectory::NORMAL);
     }
     DiscretizedTrajectory trajectory;
+    // 将pathdata和speeddata合成轨迹
     if (!reference_line_info.CombinePathAndSpeedProfile(
             planning_start_point.relative_time(),
             planning_start_point.path_point().s(), &trajectory)) {

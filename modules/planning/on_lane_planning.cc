@@ -354,7 +354,7 @@ void OnLanePlanning::RunOnce(const LocalView& local_view,
     injector_->frame_history()->Add(n, std::move(frame_));
     return;
   }
-  // 基于每条参考线添加交通灯信息
+  // 基于每条参考线添加交通规则信息
   for (auto& ref_line_info : *frame_->mutable_reference_line_info()) {
     TrafficDecider traffic_decider;
     // 对各种交通规则进行注册
@@ -507,7 +507,7 @@ Status OnLanePlanning::Plan(
     const std::vector<TrajectoryPoint>& stitching_trajectory,
     ADCTrajectory* const ptr_trajectory_pb) {
   auto* ptr_debug = ptr_trajectory_pb->mutable_debug();
-  if (FLAGS_enable_record_debug) {
+  if (FLAGS_enable_record_debug) {  // default: true
     ptr_debug->mutable_planning_data()->mutable_init_point()->CopyFrom(
         stitching_trajectory.back());
     frame_->mutable_open_space_info()->set_debug(ptr_debug);

@@ -165,7 +165,7 @@ void LaneChangeDecider::UpdatePreparationDistance(
   // If the planner just succeed recently, let's be more patient and try again
   if (Clock::NowInSeconds() -
           lane_change_status->last_succeed_timestamp() <
-      FLAGS_allowed_lane_change_failure_time) {
+      FLAGS_allowed_lane_change_failure_time) {  // default: 2.0
     return;
   }
   // Get ADC's current s and the lane-change start distance s
@@ -183,6 +183,7 @@ void LaneChangeDecider::UpdatePreparationDistance(
   ADEBUG << "Change lane point s: " << point_sl.s();
   // If the remaining lane-change preparation distance is too small,
   // refresh the preparation distance
+  // default: FLAGS_min_lane_change_prepare_length = 10.0
   if (adc_sl_info.first[0] + FLAGS_min_lane_change_prepare_length >
       point_sl.s()) {
     lane_change_status->set_exist_lane_change_start_position(false);
