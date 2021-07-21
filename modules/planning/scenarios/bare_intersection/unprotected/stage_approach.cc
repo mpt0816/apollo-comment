@@ -53,6 +53,7 @@ Stage::StageStatus BareIntersectionUnprotectedStageApproach::Process(
 
   const std::string pnc_junction_overlap_id =
       GetContext()->current_pnc_junction_overlap_id;
+  // 没有路口，场景完成
   if (pnc_junction_overlap_id.empty()) {
     return FinishScenario();
   }
@@ -61,6 +62,7 @@ Stage::StageStatus BareIntersectionUnprotectedStageApproach::Process(
   PathOverlap* current_pnc_junction = scenario::util::GetOverlapOnReferenceLine(
       reference_line_info, pnc_junction_overlap_id,
       ReferenceLineInfo::PNC_JUNCTION);
+  // 没有路口，场景完成
   if (!current_pnc_junction) {
     return FinishScenario();
   }
@@ -73,6 +75,7 @@ Stage::StageStatus BareIntersectionUnprotectedStageApproach::Process(
          << "] start_s[" << current_pnc_junction->start_s
          << "] distance_adc_to_pnc_junction[" << distance_adc_to_pnc_junction
          << "]";
+  // adc已经经过路口，场景完成
   if (distance_adc_to_pnc_junction < -kPassStopLineBuffer) {
     // passed stop line
     return FinishStage(frame);
@@ -80,21 +83,22 @@ Stage::StageStatus BareIntersectionUnprotectedStageApproach::Process(
 
   // set cruise_speed to slow down
   frame->mutable_reference_line_info()->front().SetCruiseSpeed(
-      scenario_config_.approach_cruise_speed());
+      scenario_config_.approach_cruise_speed());  // default: 6.7056 m/s, 15 mph
 
   // set right_of_way_status
   reference_line_info.SetJunctionRightOfWay(current_pnc_junction->start_s,
                                             false);
-
+  // 再进行一次规划？
   plan_ok = ExecuteTaskOnReferenceLine(planning_init_point, frame);
   if (!plan_ok) {
     AERROR << "BareIntersectionUnprotectedStageApproach planning error";
   }
 
   std::vector<std::string> wait_for_obstacle_ids;
+  // adc附近有没有障碍物？
   bool clear = CheckClear(reference_line_info, &wait_for_obstacle_ids);
 
-  if (scenario_config_.enable_explicit_stop()) {
+  if (scenario_config_.enable_explicit_stop()) {  // default: false
     bool stop = false;
     static constexpr double kCheckClearDistance = 5.0;  // meter
     static constexpr double kStartWatchDistance = 2.0;  // meter
@@ -112,6 +116,7 @@ Stage::StageStatus BareIntersectionUnprotectedStageApproach::Process(
       if (clear_counter >= 5) {
         clear_counter = 0;  // reset
       } else {
+        // clear_counter < 5, 认为有障碍物，停车等待
         stop = true;
       }
       // use PlanningContext instead of static counter for multi-ADC
@@ -127,7 +132,7 @@ Stage::StageStatus BareIntersectionUnprotectedStageApproach::Process(
           "PNC_JUNCTION_" + current_pnc_junction->object_id;
       planning::util::BuildStopDecision(
           virtual_obstacle_id, current_pnc_junction->start_s,
-          scenario_config_.stop_distance(),
+          scenario_config_.stop_distance(),   // default: 0.5
           StopReasonCode::STOP_REASON_STOP_SIGN, wait_for_obstacle_ids,
           "bare intersection", frame,
           &(frame->mutable_reference_line_info()->front()));
@@ -164,7 +169,7 @@ bool BareIntersectionUnprotectedStageApproach::CheckClear(
 
       // ignore the obstacle which is already on reference line and moving
       // along the direction of ADC
-      if (obstacle_traveled_s < kepsilon &&
+      if (obstacle_traveled_s < kepsilon &&   // 行驶方向和adc一样
           obstacle->reference_line_st_boundary().min_t() <
               kConf_ignore_max_st_min_t &&
           obstacle->reference_line_st_boundary().min_s() >
@@ -186,7 +191,7 @@ Stage::StageStatus BareIntersectionUnprotectedStageApproach::FinishStage(
 
   // reset cruise_speed
   auto& reference_line_info = frame->mutable_reference_line_info()->front();
-  reference_line_info.SetCruiseSpeed(FLAGS_default_cruise_speed);
+  reference_line_info.SetCruiseSpeed(FLAGS_default_cruise_speed); // default: 5.0 m/s
 
   return Stage::FINISHED;
 }

@@ -97,10 +97,10 @@ bool StageIntersectionCruiseImpl::CheckDone(
     // set right_of_way_status
     reference_line_info.SetJunctionRightOfWay(traffic_sign_overlap->start_s,
                                               right_of_way_status);
-
+    // adc超过overpath 20m 后，场景完成
     return distance_adc_pass_traffic_sign >= kIntersectionPassDist;
   }
-
+  // adc超出Junction 2m后，场景完成
   if (!planning::util::CheckInsidePnCJunction(reference_line_info)) {
     return true;
   }

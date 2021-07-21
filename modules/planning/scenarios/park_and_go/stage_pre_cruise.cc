@@ -50,7 +50,7 @@ Stage::StageStatus ParkAndGoStagePreCruise::Process(
   ADEBUG << vehicle_status->steering_percentage();
 
   if ((std::fabs(vehicle_status->steering_percentage()) <
-       scenario_config_.max_steering_percentage_when_cruise()) &&
+       scenario_config_.max_steering_percentage_when_cruise()) &&  // default: 20.0
       scenario::util::CheckADCReadyToCruise(injector_->vehicle_state(), frame,
                                             scenario_config_)) {
     return FinishStage();

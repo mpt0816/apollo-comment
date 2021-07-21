@@ -48,13 +48,13 @@ Stage::StageStatus TrafficLightUnprotectedLeftTurnStageApproach::Process(
 
   scenario_config_.CopyFrom(GetContext()->scenario_config);
 
-  if (!config_.enabled()) {
+  if (!config_.enabled()) {  // default: true
     return FinishStage(frame);
   }
 
   // set cruise_speed to slow down
   frame->mutable_reference_line_info()->front().SetCruiseSpeed(
-      scenario_config_.approach_cruise_speed());
+      scenario_config_.approach_cruise_speed());  // default: 2.78 m/s
 
   bool plan_ok = ExecuteTaskOnReferenceLine(planning_init_point, frame);
   if (!plan_ok) {
@@ -99,7 +99,7 @@ Stage::StageStatus TrafficLightUnprotectedLeftTurnStageApproach::Process(
     // check on traffic light color and distance to stop line
     if (signal_color != TrafficLight::GREEN ||
         distance_adc_to_stop_line >=
-            scenario_config_.max_valid_stop_distance()) {
+            scenario_config_.max_valid_stop_distance()) {  // default: 2.0m
       traffic_light_all_done = false;
       break;
     }
@@ -120,7 +120,7 @@ Stage::StageStatus TrafficLightUnprotectedLeftTurnStageApproach::FinishStage(
     Frame* frame) {
   // check speed at stop_stage
   const double adc_speed = injector_->vehicle_state()->linear_velocity();
-  if (adc_speed > scenario_config_.max_adc_speed_before_creep()) {
+  if (adc_speed > scenario_config_.max_adc_speed_before_creep()) {  // default: 5.56m/s
     // skip creep
     next_stage_ = ScenarioConfig ::
         TRAFFIC_LIGHT_UNPROTECTED_LEFT_TURN_INTERSECTION_CRUISE;

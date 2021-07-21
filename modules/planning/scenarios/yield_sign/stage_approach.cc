@@ -87,7 +87,7 @@ Stage::StageStatus YieldSignStageApproach::Process(
            << "]";
     bool yield_sign_done = false;
     if (distance_adc_to_stop_line <
-        scenario_config_.max_valid_stop_distance()) {
+        scenario_config_.max_valid_stop_distance()) {  // default: 4.5m
       // close enough, check yield_sign clear
       yield_sign_done = true;
       const auto& path_decision = reference_line_info.path_decision();
@@ -106,6 +106,7 @@ Stage::StageStatus YieldSignStageApproach::Process(
         }
 
         static constexpr double kMinSTBoundaryT = 6.0;  // sec
+        // 不考虑很长时间后才可能对adc行为产生影响的障碍物
         if (obstacle->reference_line_st_boundary().min_t() > kMinSTBoundaryT) {
           continue;
         }
@@ -125,6 +126,7 @@ Stage::StageStatus YieldSignStageApproach::Process(
         static constexpr double kIgnoreMaxSTMinT = 0.1;
         // min st_min_s(m) to ignore
         static constexpr double kIgnoreMinSTMinS = 15.0;
+        // 不考虑当前离adc较远的障碍物
         if (obstacle_traveled_s < kepsilon &&
             obstacle->reference_line_st_boundary().min_t() < kIgnoreMaxSTMinT &&
             obstacle->reference_line_st_boundary().min_s() > kIgnoreMinSTMinS) {

@@ -88,7 +88,7 @@ Stage::StageStatus TrafficLightUnprotectedRightTurnStageStop::Process(
 
     // check distance to stop line
     if (distance_adc_to_stop_line >
-        scenario_config_.max_valid_stop_distance()) {
+        scenario_config_.max_valid_stop_distance()) {  // default: 2.0m
       traffic_light_all_stop = false;
       break;
     }
@@ -114,11 +114,11 @@ Stage::StageStatus TrafficLightUnprotectedRightTurnStageStop::Process(
       ADEBUG << "distance_adc_pass_stop_line[" << distance_adc_pass_stop_line
              << "]";
       if (distance_adc_pass_stop_line >
-          scenario_config_.min_pass_s_distance()) {
+          scenario_config_.min_pass_s_distance()) {  // default: 3.0m
         return FinishStage(false);
       }
 
-      if (scenario_config_.enable_right_turn_on_red()) {
+      if (scenario_config_.enable_right_turn_on_red()) {  // default: false
         // when right_turn_on_red is enabled
         // check on wait-time
         if (GetContext()->stop_start_time == 0.0) {
@@ -129,7 +129,7 @@ Stage::StageStatus TrafficLightUnprotectedRightTurnStageStop::Process(
           ADEBUG << "stop_start_time[" << start_time << "] wait_time["
                  << wait_time << "]";
           if (wait_time >
-              scenario_config_.red_light_right_turn_stop_duration_sec()) {
+              scenario_config_.red_light_right_turn_stop_duration_sec()) {  // default: 3.0s
             return FinishStage(false);
           }
         }
@@ -167,7 +167,7 @@ Stage::StageStatus TrafficLightUnprotectedRightTurnStageStop::FinishStage(
   } else {
     // check speed at stop_stage
     const double adc_speed = injector_->vehicle_state()->linear_velocity();
-    if (adc_speed > scenario_config_.max_adc_speed_before_creep()) {
+    if (adc_speed > scenario_config_.max_adc_speed_before_creep()) { // default: 3.0 m/s
       // skip creep
       next_stage_ = ScenarioConfig ::
           TRAFFIC_LIGHT_UNPROTECTED_RIGHT_TURN_INTERSECTION_CRUISE;

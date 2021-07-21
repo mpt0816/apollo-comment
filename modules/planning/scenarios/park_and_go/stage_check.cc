@@ -36,7 +36,7 @@ Stage::StageStatus ParkAndGoStageCheck::Process(
     AERROR << "ParkAndGoStageAdjust planning error";
     return StageStatus::ERROR;
   }
-
+  // 检查adc周围是否有障碍物，是否和车道同一个方向，是否在前进档
   bool ready_to_cruise = scenario::util::CheckADCReadyToCruise(
       injector_->vehicle_state(), frame, scenario_config_);
   return FinishStage(ready_to_cruise);

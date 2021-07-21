@@ -99,7 +99,7 @@ PullOverStatus CheckADCPullOver(
 
   const double adc_front_edge_s = reference_line_info.AdcSlBoundary().end_s();
   double distance = adc_front_edge_s - pull_over_sl.s();
-  if (distance >= scenario_config.pass_destination_threshold()) {
+  if (distance >= scenario_config.pass_destination_threshold()) {  // default: 15.0
     ADEBUG << "ADC passed pull-over spot: distance[" << distance << "]";
     return PASS_DESTINATION;
   }
@@ -184,11 +184,11 @@ bool CheckPullOverPositionBySL(const ReferenceLineInfo& reference_line_info,
          << "] l_diff[" << l_diff << "] theta_diff[" << theta_diff << "]";
 
   // check s/l/theta diff
-  bool ret = (l_diff <= scenario_config.max_l_error_to_end_point() &&
-              theta_diff <= scenario_config.max_theta_error_to_end_point());
+  bool ret = (l_diff <= scenario_config.max_l_error_to_end_point() &&         // default: 1.0
+              theta_diff <= scenario_config.max_theta_error_to_end_point());  // default: 0.2
   if (check_s) {
     ret = (ret && s_diff >= 0 &&
-           s_diff <= scenario_config.max_s_error_to_end_point());
+           s_diff <= scenario_config.max_s_error_to_end_point());             // default: 0.5
   }
 
   return ret;
@@ -204,6 +204,7 @@ bool CheckADCReadyToCruise(
   common::SLPoint adc_position_sl;
   // get nearest reference line
   const auto& reference_line_list = frame->reference_line_info();
+  // 距离adc最近的参考线
   const auto reference_line_info = std::min_element(
       reference_line_list.begin(), reference_line_list.end(),
       [&](const ReferenceLineInfo& ref_a, const ReferenceLineInfo& ref_b) {
@@ -217,10 +218,10 @@ bool CheckADCReadyToCruise(
   reference_line_info->reference_line().XYToSL(adc_position, &adc_position_sl);
   bool is_near_front_obstacle =
       CheckADCSurroundObstacles(adc_position, adc_heading, frame,
-                                scenario_config.front_obstacle_buffer());
+                                scenario_config.front_obstacle_buffer());  // default: 10.0m
   bool heading_align_w_reference_line =
       CheckADCHeading(adc_position, adc_heading, *reference_line_info,
-                      scenario_config.heading_buffer());
+                      scenario_config.heading_buffer());                   // default: 0.3
   ADEBUG << "is_near_front_obstacle: " << is_near_front_obstacle;
   ADEBUG << "heading_align_w_reference_line: "
          << heading_align_w_reference_line;

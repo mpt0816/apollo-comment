@@ -68,7 +68,7 @@ Stage::StageStatus EmergencyPullOverStageApproach::Process(
     const auto& reference_line = reference_line_info.reference_line();
     common::SLPoint pull_over_sl;
     reference_line.XYToSL(pull_over_status.position(), &pull_over_sl);
-    const double stop_distance = scenario_config_.stop_distance();
+    const double stop_distance = scenario_config_.stop_distance();  // default: 1.5 m
     stop_line_s =
         pull_over_sl.s() + stop_distance +
         VehicleConfigHelper::GetConfig().vehicle_param().front_edge_to_center();

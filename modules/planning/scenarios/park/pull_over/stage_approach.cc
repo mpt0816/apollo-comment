@@ -56,6 +56,13 @@ Stage::StageStatus PullOverStageApproach::Process(
   }
 
   const auto& reference_line_info = frame->reference_line_info().front();
+  // enum PullOverStatus {
+  // UNKNOWN = 0,
+  // APPROACHING = 1,
+  // PARK_COMPLETE = 2,
+  // PARK_FAIL = 3,
+  // PASS_DESTINATION = 4,
+  // };
   scenario::util::PullOverStatus status = scenario::util::CheckADCPullOver(
       injector_->vehicle_state(), reference_line_info, scenario_config_,
       injector_->planning_context());
@@ -109,7 +116,7 @@ Stage::StageStatus PullOverStageApproach::Process(
 
       const double stop_line_s =
           pull_over_sl.s() -
-          scenario_config_.s_distance_to_stop_for_open_space_parking();
+          scenario_config_.s_distance_to_stop_for_open_space_parking();  // default: 7.0
       const std::string virtual_obstacle_id = "DEST_PULL_OVER_PREPARKING";
       const std::vector<std::string> wait_for_obstacle_ids;
       planning::util::BuildStopDecision(

@@ -49,7 +49,7 @@ Stage::StageStatus YieldSignStageCreep::Process(
 
   scenario_config_.CopyFrom(GetContext()->scenario_config);
 
-  if (!config_.enabled()) {
+  if (!config_.enabled()) {  // true
     return FinishStage();
   }
 
@@ -82,7 +82,7 @@ Stage::StageStatus YieldSignStageCreep::Process(
   const double yield_sign_end_s = current_yield_sign_overlap->end_s;
   const double wait_time =
       Clock::NowInSeconds() - GetContext()->creep_start_time;
-  const double timeout_sec = scenario_config_.creep_timeout_sec();
+  const double timeout_sec = scenario_config_.creep_timeout_sec();  // default: 10.0s
   auto* task = dynamic_cast<CreepDecider*>(FindTask(TaskConfig::CREEP_DECIDER));
 
   if (task == nullptr) {

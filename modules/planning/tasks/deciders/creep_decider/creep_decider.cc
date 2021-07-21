@@ -142,12 +142,13 @@ bool CreepDecider::CheckCreepDone(const Frame& frame,
                                   const double timeout_sec) {
   const auto& creep_config = config_.creep_decider_config();
   bool creep_done = false;
+  // 在此函数调用前traffic_sign_overlap_end_s已经累加过FindCreepDistance了？？
   double creep_stop_s = traffic_sign_overlap_end_s +
                         FindCreepDistance(frame, reference_line_info);
 
   const double distance =
       creep_stop_s - reference_line_info.AdcSlBoundary().end_s();
-  if (distance < creep_config.max_valid_stop_distance() ||
+  if (distance < creep_config.max_valid_stop_distance() ||  // default: 0.4
       wait_time_sec >= timeout_sec) {
     bool all_far_away = true;
     for (auto* obstacle :

@@ -82,7 +82,7 @@ Stage::StageStatus StopSignUnprotectedStageStop::Process(
   const double adc_front_edge_s = reference_line_info.AdcSlBoundary().end_s();
   const double distance_adc_pass_stop_sign =
       adc_front_edge_s - stop_sign_start_s;
-  // passed stop line too far
+  // passed stop line too far， adc已经超过stop sign
   if (distance_adc_pass_stop_sign > kPassStopLineBuffer) {
     return FinishStage();
   }
@@ -92,11 +92,11 @@ Stage::StageStatus StopSignUnprotectedStageStop::Process(
   const double wait_time = Clock::NowInSeconds() - start_time;
   ADEBUG << "stop_start_time[" << start_time << "] wait_time[" << wait_time
          << "]";
-  if (wait_time < scenario_config_.stop_duration_sec()) {
+  if (wait_time < scenario_config_.stop_duration_sec()) {  // default: 1.0s
     return Stage::RUNNING;
   }
 
-  // check on watch_vehicles
+  // check on watch_vehicles, 没有障碍物，安全，可以通过，场景完成
   auto& watch_vehicles = GetContext()->watch_vehicles;
   if (watch_vehicles.empty()) {
     return FinishStage();
@@ -121,7 +121,7 @@ Stage::StageStatus StopSignUnprotectedStageStop::Process(
   watch_vehicle_ids.erase(
       unique(watch_vehicle_ids.begin(), watch_vehicle_ids.end()),
       watch_vehicle_ids.end());
-
+  // check on watch_vehicles, 没有障碍物，安全，可以通过，场景完成
   if (watch_vehicle_ids.empty()) {
     return FinishStage();
   }
@@ -136,12 +136,14 @@ Stage::StageStatus StopSignUnprotectedStageStop::Process(
   }
 
   // check timeout while waiting for only one vehicle
-  if (wait_time > scenario_config_.stop_timeout_sec() &&
+  // 为什么1个车辆时就忽略？？ 是因为长时间一个车辆，车辆可能有故障？？
+  if (wait_time > scenario_config_.stop_timeout_sec() &&  // default: 8.0s
       watch_vehicle_ids.size() <= 1) {
     return FinishStage();
   }
 
   const PathDecision& path_decision = reference_line_info.path_decision();
+  // 删除离开10m以上的车辆
   RemoveWatchVehicle(path_decision, &watch_vehicles);
 
   return Stage::RUNNING;

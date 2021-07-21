@@ -49,7 +49,7 @@ Stage::StageStatus StopSignUnprotectedStageCreep::Process(
 
   scenario_config_.CopyFrom(GetContext()->scenario_config);
 
-  if (!config_.enabled()) {
+  if (!config_.enabled()) {  // default: true
     return FinishStage();
   }
 
@@ -78,7 +78,7 @@ Stage::StageStatus StopSignUnprotectedStageCreep::Process(
   const double stop_sign_end_s = current_stop_sign_overlap->end_s;
   const double wait_time =
       Clock::NowInSeconds() - GetContext()->creep_start_time;
-  const double timeout_sec = scenario_config_.creep_timeout_sec();
+  const double timeout_sec = scenario_config_.creep_timeout_sec();  // default: 10.0s
   auto* task = dynamic_cast<CreepDecider*>(FindTask(TaskConfig::CREEP_DECIDER));
 
   if (task == nullptr) {
@@ -87,9 +87,10 @@ Stage::StageStatus StopSignUnprotectedStageCreep::Process(
   }
 
   double creep_stop_s =
-      stop_sign_end_s + task->FindCreepDistance(*frame, reference_line_info);
+      stop_sign_end_s + task->FindCreepDistance(*frame, reference_line_info);  // return 2.0
   const double distance =
       creep_stop_s - reference_line_info.AdcSlBoundary().end_s();
+  // 如果adc超过stop sign，刹停
   if (distance <= 0.0) {
     auto& rfl_info = frame->mutable_reference_line_info()->front();
     *(rfl_info.mutable_speed_data()) =

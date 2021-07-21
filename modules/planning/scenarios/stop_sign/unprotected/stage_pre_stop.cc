@@ -82,11 +82,12 @@ Stage::StageStatus StopSignUnprotectedStagePreStop::Process(
       adc_front_edge_s - current_stop_sign_overlap->start_s;
   if (distance_adc_pass_stop_sign <= kPassStopLineBuffer) {
     // not passed stop line, check valid stop
+    // 判断adc是否已经在stop sign前停车
     if (CheckADCStop(adc_front_edge_s, current_stop_sign_overlap->start_s)) {
       return FinishStage();
     }
   } else {
-    // passed stop line
+    // passed stop line， 已经通过 stop sign, 场景完成
     return FinishStage();
   }
 
@@ -191,9 +192,9 @@ int StopSignUnprotectedStagePreStop::AddWatchVehicle(
   const double stop_line_s = over_lap_info->lane_overlap_info().start_s();
   const double obstacle_end_s = obstacle_s + perception_obstacle.length() / 2;
   const double distance_to_stop_line = stop_line_s - obstacle_end_s;
-
+  // 障碍物离stop sign较远，忽略
   if (distance_to_stop_line >
-      scenario_config_.watch_vehicle_max_valid_stop_distance()) {
+      scenario_config_.watch_vehicle_max_valid_stop_distance()) {  // default: 5.0m
     ADEBUG << "obstacle_id[" << perception_obstacle_id << "] type["
            << obstacle_type_name << "] distance_to_stop_line["
            << distance_to_stop_line << "]; stop_line_s" << stop_line_s
@@ -238,7 +239,7 @@ bool StopSignUnprotectedStagePreStop::CheckADCStop(
          << distance_stop_line_to_adc_front_edge << "]";
 
   if (distance_stop_line_to_adc_front_edge >
-      scenario_config_.max_valid_stop_distance()) {
+      scenario_config_.max_valid_stop_distance()) {  // default: 2.0m
     ADEBUG << "not a valid stop. too far from stop line.";
     return false;
   }

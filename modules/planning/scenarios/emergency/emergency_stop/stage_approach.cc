@@ -59,7 +59,7 @@ Stage::StageStatus EmergencyStopStageApproach::Process(
   const auto& reference_line = reference_line_info.reference_line();
   const double adc_speed = injector_->vehicle_state()->linear_velocity();
   const double adc_front_edge_s = reference_line_info.AdcSlBoundary().end_s();
-  const double stop_distance = scenario_config_.stop_distance();
+  const double stop_distance = scenario_config_.stop_distance();   //default: 1.0
 
   bool stop_fence_exist = false;
   double stop_line_s;
@@ -74,7 +74,7 @@ Stage::StageStatus EmergencyStopStageApproach::Process(
       stop_line_s = stop_fence_sl.s();
     }
   }
-
+  // 如果不存在停车点，根据adc的最大加速度计算停车距离，设置停车点
   if (!stop_fence_exist) {
     const double deceleration = scenario_config_.max_stop_deceleration();
     const double travel_distance =
