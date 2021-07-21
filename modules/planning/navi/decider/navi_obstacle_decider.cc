@@ -271,6 +271,7 @@ double NaviObstacleDecider::GetNudgeDistance(
   double left_nudge_lane = 0.0;
   double right_nudge_lane = 0.0;
   double routing_y = path_data_points[0].y();
+  // 计算每个路径点处参考线的宽度，然后得到最小路径宽度
   double min_lane_width = GetMinLaneWidth(path_data_points, reference_line);
 
   ADEBUG << "get min_lane_width: " << min_lane_width;

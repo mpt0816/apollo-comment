@@ -99,7 +99,9 @@ void TrajectoryStitcher::TransformLastPublishedTrajectory(
                   auto x = p.path_point().x();
                   auto y = p.path_point().y();
                   auto theta = p.path_point().theta();
-
+                  // 将tx, ty代入下式可得：
+                  // x_new = (x-x_diff)*cos(theta_diff) + (y-y_diff)*sin(theta_diff)
+                  // y_new = -(x-x_diff)*sin(theta_diff) + (y-y_diff)*cos(theta_diff)
                   auto x_new = cos_theta * x - sin_theta * y + tx;
                   auto y_new = sin_theta * x + cos_theta * y + ty;
                   auto theta_new =

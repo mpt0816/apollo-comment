@@ -49,8 +49,8 @@ bool NaviPathDecider::Init(const PlanningConfig& config) {
   config_ = planner_navi_conf.navi_path_decider_config();
   auto move_dest_lane_config_talbe = config_.move_dest_lane_config_talbe();
   for (const auto& item : move_dest_lane_config_talbe.lateral_shift()) {
-    double max_speed_level = item.max_speed();
-    double max_move_dest_lane_shift_y = item.max_move_dest_lane_shift_y();
+    double max_speed_level = item.max_speed();  // default: 34
+    double max_move_dest_lane_shift_y = item.max_move_dest_lane_shift_y();  // default: 0.45
     if (move_dest_lane_config_talbe_.find(max_speed_level) ==
         move_dest_lane_config_talbe_.end()) {
       move_dest_lane_config_talbe_.emplace(
@@ -66,12 +66,12 @@ bool NaviPathDecider::Init(const PlanningConfig& config) {
           << " ,max move dest lane shift y : " << max_move_dest_lane_shift_y
           << "]";
   }
-  max_keep_lane_distance_ = config_.max_keep_lane_distance();
-  max_keep_lane_shift_y_ = config_.max_keep_lane_shift_y();
-  min_keep_lane_offset_ = config_.min_keep_lane_offset();
-  keep_lane_shift_compensation_ = config_.keep_lane_shift_compensation();
-  start_plan_point_from_ = config_.start_plan_point_from();
-  move_dest_lane_compensation_ = config_.move_dest_lane_compensation();
+  max_keep_lane_distance_ = config_.max_keep_lane_distance();                // default: 0.4
+  max_keep_lane_shift_y_ = config_.max_keep_lane_shift_y();                  // default: 0.15
+  min_keep_lane_offset_ = config_.min_keep_lane_offset();                    // default: 0.20
+  keep_lane_shift_compensation_ = config_.keep_lane_shift_compensation();    // default: 0.01
+  start_plan_point_from_ = config_.start_plan_point_from();                  // default: 0
+  move_dest_lane_compensation_ = config_.move_dest_lane_compensation();      // default: 0.35
 
   is_init_ = obstacle_decider_.Init(config);
   return is_init_;
@@ -107,6 +107,7 @@ apollo::common::Status NaviPathDecider::Process(
   start_plan_point_.set_theta(vehicle_state_.heading());
   start_plan_v_ = vehicle_state_.linear_velocity();
   start_plan_a_ = vehicle_state_.linear_acceleration();
+  // 将adc当前位置作为规划起点
   if (start_plan_point_from_ == 1) {
     // start plan point from planning schedule
     start_plan_point_.set_x(init_point.path_point().x());
@@ -118,6 +119,7 @@ apollo::common::Status NaviPathDecider::Process(
 
   // intercept path points from reference line
   std::vector<apollo::common::PathPoint> path_points;
+  // 从参考线上稀疏采样
   if (!GetBasicPathData(reference_line, &path_points)) {
     AERROR << "Get path points from reference line failed";
     return Status(apollo::common::ErrorCode::PLANNING_ERROR,
@@ -131,6 +133,7 @@ apollo::common::Status NaviPathDecider::Process(
 
   ADEBUG << "in current plan cycle, adc to ref line distance : "
          << dest_ref_line_y << "lane id : " << cur_reference_line_lane_id_;
+  // 将路径在adc横向方向偏移
   MoveToDestLane(dest_ref_line_y, &path_points);
 
   KeepLane(dest_ref_line_y, &path_points);
@@ -232,10 +235,10 @@ bool NaviPathDecider::GetBasicPathData(
     std::vector<common::PathPoint>* const path_points) {
   CHECK_NOTNULL(path_points);
 
-  double min_path_len = config_.min_path_length();
+  double min_path_len = config_.min_path_length(); // default: 5
   // get min path plan length s = v0 * t + 1 / 2.0 * a * t^2
   double path_len =
-      start_plan_v_ * config_.min_look_forward_time() +
+      start_plan_v_ * config_.min_look_forward_time() +   // default: 2
       start_plan_a_ * pow(config_.min_look_forward_time(), 2) / 2.0;
   path_len = std::max(path_len, min_path_len);
 

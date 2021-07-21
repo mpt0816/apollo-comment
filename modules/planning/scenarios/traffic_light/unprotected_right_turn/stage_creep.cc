@@ -83,7 +83,7 @@ Stage::StageStatus TrafficLightUnprotectedRightTurnStageCreep::Process(
   // note: don't check traffic light color while creeping on right turn
   const double wait_time =
       Clock::NowInSeconds() - GetContext()->creep_start_time;
-  const double timeout_sec = scenario_config_.creep_timeout_sec();
+  const double timeout_sec = scenario_config_.creep_timeout_sec();  // default: 10.0s
   auto* task = dynamic_cast<CreepDecider*>(FindTask(TaskConfig::CREEP_DECIDER));
   if (task == nullptr) {
     AERROR << "task is nullptr";

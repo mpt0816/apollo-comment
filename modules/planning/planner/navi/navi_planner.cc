@@ -113,7 +113,9 @@ Status NaviPlanner::Plan(const TrajectoryPoint& planning_init_point,
   size_t success_line_count = 0;
   for (auto& reference_line_info : *frame->mutable_reference_line_info()) {
     uint32_t priority = reference_line_info.GetPriority();
+    // default: kStraightForwardLineCost = 10.0
     reference_line_info.SetCost(priority * kStraightForwardLineCost);
+    // 找到目标车道的参考线
     if (priority != KDestLanePriority) {
       reference_line_info.SetDrivable(false);
       continue;
@@ -151,9 +153,11 @@ Status NaviPlanner::PlanOnReferenceLine(
   }
   ADEBUG << "planning start point:" << planning_init_point.DebugString();
   auto* heuristic_speed_data = reference_line_info->mutable_speed_data();
+  // 上一帧的速度规划曲线中规划起点之后的点
   auto speed_profile =
       GenerateInitSpeedProfile(planning_init_point, reference_line_info);
   if (speed_profile.empty()) {
+    // 以规划起点的速度匀速行驶
     speed_profile = GenerateSpeedHotStart(planning_init_point);
     ADEBUG << "Using dummy hot start for speed vector";
   }
@@ -322,6 +326,7 @@ std::vector<SpeedPoint> NaviPlanner::GenerateInitSpeedProfile(
     double start_s = 0.0;
     bool is_updated_start = false;
     for (const auto& speed_point : last_speed_data) {
+      // 从上一帧规划的速度曲线中删除规划起点之前的点
       if (speed_point.s() < s_diff) {
         continue;
       }

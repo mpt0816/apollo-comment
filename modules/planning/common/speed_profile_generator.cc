@@ -47,6 +47,7 @@ SpeedData SpeedProfileGenerator::GenerateFallbackSpeed(
     AWARN << "Already stopped! Nothing to do in GenerateFallbackSpeed()";
     SpeedData speed_data;
     speed_data.AppendSpeedPoint(0.0, 0.0, 0.0, 0.0, 0.0);
+    // 按照最后一个点的速度信息进行填充
     FillEnoughSpeedPoints(&speed_data);
     return speed_data;
   }
@@ -54,8 +55,8 @@ SpeedData SpeedProfileGenerator::GenerateFallbackSpeed(
   std::array<double, 3> init_s = {0.0, init_v, init_a};
 
   // TODO(all): dt is too small;
-  double delta_t = FLAGS_fallback_time_unit;
-  double total_time = FLAGS_fallback_total_time;
+  double delta_t = FLAGS_fallback_time_unit;      // default: 0.1
+  double total_time = FLAGS_fallback_total_time;  // dafault: 3.0
   const size_t num_of_knots = static_cast<size_t>(total_time / delta_t) + 1;
 
   PiecewiseJerkSpeedProblem piecewise_jerk_problem(num_of_knots, delta_t,
@@ -68,15 +69,16 @@ SpeedData SpeedProfileGenerator::GenerateFallbackSpeed(
 
   piecewise_jerk_problem.set_x_bounds(0.0, std::fmax(stop_distance, 100.0));
   piecewise_jerk_problem.set_dx_bounds(
-      0.0, std::fmax(FLAGS_planning_upper_speed_limit, init_v));
+      0.0, std::fmax(FLAGS_planning_upper_speed_limit, init_v));  // default: 31.3 m/s
   piecewise_jerk_problem.set_ddx_bounds(veh_param.max_deceleration(),
                                         veh_param.max_acceleration());
-  piecewise_jerk_problem.set_dddx_bound(FLAGS_longitudinal_jerk_lower_bound,
-                                        FLAGS_longitudinal_jerk_upper_bound);
+  piecewise_jerk_problem.set_dddx_bound(FLAGS_longitudinal_jerk_lower_bound,  // default: -4.0
+                                        FLAGS_longitudinal_jerk_upper_bound); // default: 2.0
 
   // Solve the problem
   if (!piecewise_jerk_problem.Optimize()) {
     AERROR << "Piecewise jerk fallback speed optimizer failed!";
+    // 恒定加速度停车
     return GenerateStopProfile(init_v, init_a);
   }
 
@@ -128,7 +130,7 @@ SpeedData SpeedProfileGenerator::GenerateStopProfile(const double init_speed,
 
   double pre_s = 0.0;
   double pre_v = init_speed;
-  double acc = FLAGS_slowdown_profile_deceleration;
+  double acc = FLAGS_slowdown_profile_deceleration;  // default: -4.0
 
   speed_data.AppendSpeedPoint(0.0, 0.0, init_speed, init_acc, 0.0);
   for (double t = unit_t; t < max_t; t += unit_t) {

@@ -48,7 +48,7 @@ Stage::StageStatus EmergencyStopStageStandby::Process(
   const auto& reference_line_info = frame->reference_line_info().front();
   const auto& reference_line = reference_line_info.reference_line();
   const double adc_front_edge_s = reference_line_info.AdcSlBoundary().end_s();
-  const double stop_distance = scenario_config_.stop_distance();
+  const double stop_distance = scenario_config_.stop_distance();  // default: 1.0
 
   bool stop_fence_exist = false;
   double stop_line_s;
@@ -63,7 +63,7 @@ Stage::StageStatus EmergencyStopStageStandby::Process(
       stop_line_s = stop_fence_sl.s();
     }
   }
-
+  // 如果不存在停车点，设置adc前方2m为停车点
   if (!stop_fence_exist) {
     static constexpr double kBuffer = 2.0;
     stop_line_s = adc_front_edge_s + stop_distance + kBuffer;

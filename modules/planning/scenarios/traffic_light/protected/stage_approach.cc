@@ -81,7 +81,7 @@ Stage::StageStatus TrafficLightProtectedStageApproach::Process(
 
     // check distance to stop line
     if (distance_adc_to_stop_line >
-        scenario_config_.max_valid_stop_distance()) {
+        scenario_config_.max_valid_stop_distance()) {  // default: 2.0
       traffic_light_all_done = false;
       break;
     }

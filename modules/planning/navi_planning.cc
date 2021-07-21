@@ -135,10 +135,10 @@ void NaviPlanning::RunOnce(const LocalView& local_view,
 
   // chassis
   ADEBUG << "Get chassis: " << local_view_.chassis->DebugString();
-
+  // 计算adc的速度、加速度、档位等，在 navigation 模式下不对adc的坐标x, y, heading等进行设置
   Status status = injector_->vehicle_state()->Update(
       *local_view_.localization_estimate, *local_view_.chassis);
-
+  // 计算adc的坐标x, y, theta，使用定位的值？？
   auto vehicle_config =
       ComputeVehicleConfigFromLocalization(*local_view_.localization_estimate);
 
@@ -148,12 +148,12 @@ void NaviPlanning::RunOnce(const LocalView& local_view,
 
     auto cos_map_veh = std::cos(last_vehicle_config_.theta_);
     auto sin_map_veh = std::sin(last_vehicle_config_.theta_);
-
+    // 将当前adc的坐标转换到以上一帧adc位置为原点的坐标系中
     auto x_diff_veh = cos_map_veh * x_diff_map + sin_map_veh * y_diff_map;
     auto y_diff_veh = -sin_map_veh * x_diff_map + cos_map_veh * y_diff_map;
 
     auto theta_diff = vehicle_config.theta_ - last_vehicle_config_.theta_;
-
+    // 将上一帧的规划轨迹转换为相对于adc当前位置的轨迹
     TrajectoryStitcher::TransformLastPublishedTrajectory(
         x_diff_veh, y_diff_veh, theta_diff, last_publishable_trajectory_.get());
   }
@@ -166,6 +166,7 @@ void NaviPlanning::RunOnce(const LocalView& local_view,
   // differs only a small amount (20ms). When the different is too large, the
   // estimation is invalid.
   DCHECK_GE(start_timestamp, vehicle_state.timestamp());
+  // default: FLAGS_message_latency_threshold = 0.02s
   if (start_timestamp - vehicle_state.timestamp() <
       FLAGS_message_latency_threshold) {
     auto future_xy = injector_->vehicle_state()->EstimateFuturePosition(
@@ -189,16 +190,17 @@ void NaviPlanning::RunOnce(const LocalView& local_view,
     FillPlanningPb(start_timestamp, trajectory_pb);
     return;
   }
-
+  // default: FLAGS_planning_loop_rate = 10
   const double planning_cycle_time = 1.0 / FLAGS_planning_loop_rate;
 
   std::vector<TrajectoryPoint> stitching_trajectory;
   std::string replan_reason;
+  // 计算拼接轨迹
   stitching_trajectory = TrajectoryStitcher::ComputeStitchingTrajectory(
       vehicle_state, start_timestamp, planning_cycle_time,
       FLAGS_trajectory_stitching_preserved_length, true,
       last_publishable_trajectory_.get(), &replan_reason);
-
+  // 计算adc当前位置处的box
   injector_->ego_info()->Update(stitching_trajectory.back(), vehicle_state);
   const uint32_t frame_num = static_cast<uint32_t>(seq_num_++);
   status = InitFrame(frame_num, stitching_trajectory.back(), vehicle_state);
@@ -221,7 +223,7 @@ void NaviPlanning::RunOnce(const LocalView& local_view,
       Clock::NowInSeconds() - start_timestamp);
   if (!status.ok()) {
     AERROR << status.ToString();
-    if (FLAGS_publish_estop) {
+    if (FLAGS_publish_estop) {  // default: false
       // Because the function "Control::ProduceControlCommand()" checks the
       // "estop" signal with the following line (Line 170 in control.cc):
       // estop_ = estop_ || trajectory_.estop().is_estop();
@@ -253,8 +255,9 @@ void NaviPlanning::RunOnce(const LocalView& local_view,
   }
 
   // Use planning pad message to make driving decisions
-  if (FLAGS_enable_planning_pad_msg) {
+  if (FLAGS_enable_planning_pad_msg) { // default: false
     const auto& pad_msg_driving_action = frame_->GetPadMsgDrivingAction();
+    // 根据pad的指令计算目标车道(目标车道的优先级最高)
     ProcessPadMsg(pad_msg_driving_action);
   }
 

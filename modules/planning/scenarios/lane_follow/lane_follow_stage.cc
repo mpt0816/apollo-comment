@@ -195,7 +195,7 @@ Status LaneFollowStage::PlanOnReferenceLine(
   if (!ret.ok()) {
     PlanFallbackTrajectory(planning_start_point, frame, reference_line_info);
   }
-
+  // 合成路径规划和速度规划
   DiscretizedTrajectory trajectory;
   if (!reference_line_info->CombinePathAndSpeedProfile(
           planning_start_point.relative_time(),
@@ -245,6 +245,7 @@ Status LaneFollowStage::PlanOnReferenceLine(
   }
   // default: FLAGS_enable_trajectory_check = false
   if (FLAGS_enable_trajectory_check) {
+    // 判断速度，加速度，jerk，曲率等是否在约束内
     if (ConstraintChecker::ValidTrajectory(trajectory) !=
         ConstraintChecker::Result::VALID) {
       const std::string msg = "Current planning trajectory is not valid.";
@@ -266,16 +267,17 @@ void LaneFollowStage::PlanFallbackTrajectory(
     AERROR << "Path fallback due to algorithm failure";
     GenerateFallbackPathProfile(reference_line_info,
                                 reference_line_info->mutable_path_data());
-    reference_line_info->AddCost(kPathOptimizationFallbackCost);
+    reference_line_info->AddCost(kPathOptimizationFallbackCost); // default: cost = 2e4
     reference_line_info->set_trajectory_type(ADCTrajectory::PATH_FALLBACK);
   }
-
+  // 如果上面的fallback规划失败，从上一帧规划路径中截取
   if (reference_line_info->trajectory_type() != ADCTrajectory::PATH_FALLBACK) {
     if (!RetrieveLastFramePathProfile(
             reference_line_info, frame,
             reference_line_info->mutable_path_data())) {
       const auto& candidate_path_data =
           reference_line_info->GetCandidatePathData();
+      // 如果从上一帧规划路径中截取失败，选取self类型的规划路径
       for (const auto& path_data : candidate_path_data) {
         if (path_data.path_label().find("self") != std::string::npos) {
           *reference_line_info->mutable_path_data() = path_data;
@@ -291,7 +293,7 @@ void LaneFollowStage::PlanFallbackTrajectory(
       SpeedProfileGenerator::GenerateFallbackSpeed(injector_->ego_info());
 
   if (reference_line_info->trajectory_type() != ADCTrajectory::PATH_FALLBACK) {
-    reference_line_info->AddCost(kSpeedOptimizationFallbackCost);
+    reference_line_info->AddCost(kSpeedOptimizationFallbackCost);  // default: cost = 2e4
     reference_line_info->set_trajectory_type(ADCTrajectory::SPEED_FALLBACK);
   }
 }
@@ -316,7 +318,7 @@ void LaneFollowStage::GenerateFallbackPathProfile(
     std::vector<common::PathPoint> path_points;
     double adc_traversed_x = adc_point_x;
     double adc_traversed_y = adc_point_y;
-
+    // 从adc当前位置，按照adc的航向方向向前规划100m
     const double max_s = 100.0;
     for (double s = 0; s < max_s; s += unit_s) {
       path_points.push_back(PointFactory::ToPathPoint(
@@ -337,6 +339,7 @@ void LaneFollowStage::GenerateFallbackPathProfile(
   const double dy = adc_point_y - adc_ref_point.y();
 
   std::vector<common::PathPoint> path_points;
+  // 将参考线平移至adc当前位置
   const double max_s = reference_line.Length();
   for (double s = adc_s; s < max_s; s += unit_s) {
     const auto& ref_point = reference_line.GetReferencePoint(s);
@@ -364,7 +367,7 @@ bool LaneFollowStage::RetrieveLastFramePathProfile(
   const auto adc_frenet_frame_point_ =
       reference_line_info->reference_line().GetFrenetPoint(
           frame->PlanningStartPoint().path_point());
-
+  // 从上帧的规划路径中删除规划起点之前的点(adc后面的路径点)
   bool trim_success = path_data->LeftTrimWithRefS(adc_frenet_frame_point_);
   if (!trim_success) {
     AERROR << "Fail to trim path_data. adc_frenet_frame_point: "

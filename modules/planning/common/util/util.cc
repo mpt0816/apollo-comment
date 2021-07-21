@@ -124,7 +124,7 @@ bool CheckInsidePnCJunction(const ReferenceLineInfo& reference_line_info) {
   ADEBUG << "distance_adc_pass_intersection[" << distance_adc_pass_intersection
          << "] pnc_junction_overlap[" << pnc_junction_overlap.object_id
          << "] start_s[" << pnc_junction_overlap.start_s << "]";
-
+  // adc超出Junction 2m后才算不在Junction
   return distance_adc_pass_intersection < kIntersectionPassDist;
 }
 
