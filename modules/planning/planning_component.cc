@@ -193,6 +193,7 @@ bool PlanningComponent::Proc(
 
   // modify trajectory relative time due to the timestamp change in header
   auto start_time = adc_trajectory_pb.header().timestamp_sec();
+  // 这里 dt = 0, 有什么意义？？？
   const double dt = start_time - adc_trajectory_pb.header().timestamp_sec();
   for (auto& p : *adc_trajectory_pb.mutable_trajectory_point()) {
     p.set_relative_time(p.relative_time() + dt);

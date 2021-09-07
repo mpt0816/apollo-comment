@@ -52,12 +52,12 @@ Status RTKReplayPlanner::Plan(const TrajectoryPoint& planning_start_point,
     status = PlanOnReferenceLine(planning_start_point, frame, &(*it));
     has_plan =
         (it->IsDrivable() && it->IsChangeLanePath() &&
-         it->trajectory().GetSpatialLength() > FLAGS_change_lane_min_length);
+         it->trajectory().GetSpatialLength() > FLAGS_change_lane_min_length);  // default: 30
     if (!has_plan) {
       AERROR << "Fail to plan for lane change.";
     }
   }
-
+  // default: FLAGS_prioritize_change_lane = false
   if (!has_plan || !FLAGS_prioritize_change_lane) {
     for (auto& reference_line_info : *frame->mutable_reference_line_info()) {
       if (reference_line_info.IsChangeLanePath()) {
@@ -90,7 +90,7 @@ Status RTKReplayPlanner::PlanOnReferenceLine(
       QueryPositionMatchedPoint(planning_init_point, complete_rtk_trajectory_);
 
   std::uint32_t forward_buffer =
-      static_cast<std::uint32_t>(FLAGS_rtk_trajectory_forward);
+      static_cast<std::uint32_t>(FLAGS_rtk_trajectory_forward);  // default: 800
   // end_index is excluded.
   std::uint32_t end_index = std::min<std::uint32_t>(
       static_cast<std::uint32_t>(complete_rtk_trajectory_.size()),
@@ -116,7 +116,7 @@ Status RTKReplayPlanner::PlanOnReferenceLine(
     const auto& last_point = trajectory_points.rbegin();
     auto new_point = last_point;
     new_point->set_relative_time(new_point->relative_time() +
-                                 FLAGS_rtk_trajectory_resolution);
+                                 FLAGS_rtk_trajectory_resolution);  // default: 0.01
     trajectory_points.push_back(*new_point);
   }
   reference_line_info->SetTrajectory(DiscretizedTrajectory(trajectory_points));

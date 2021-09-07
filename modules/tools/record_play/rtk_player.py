@@ -136,7 +136,7 @@ class RtkPlayer(object):
                          (self.start, self.closestpoint))
         self.logger.debug("replan!")
 
-        self.closestpoint = self.closest_dist()
+        self.closestpoint = self.closest_dist()   # 距离adc当前位置最近的点
         self.start = max(self.closestpoint - 1, 0)
         self.logger.debug("replan_start: %s" % self.start)
         self.starttime = cyber_time.Time.now().to_sec()
@@ -197,6 +197,7 @@ class RtkPlayer(object):
                     "self.data['gear'][i] != 2: %s" % self.data['gear'][i])
                 # find next gear = 1 or 2
                 i += 1
+                ## 向后搜索，找到前进档或者倒挡的位置，如果一直是N档或者P档，则返回第一次档位切换的位置
                 while i < end and (self.data['gear'][i] != 1) and (self.data['gear'][i] != 2):
                     i += 1
                 self.logger.debug("i in while loop: [ %s ]" % i)
@@ -230,8 +231,8 @@ class RtkPlayer(object):
                 % (self.replan, self.sequence_num, self.automode))
             self.restart()
         else:
-            timepoint = self.closest_time()
-            distpoint = self.closest_dist()
+            timepoint = self.closest_time()  ## 时间上最近的点, 在距离最近点的前面
+            distpoint = self.closest_dist()  ## 距离上最近的点
 
             if self.data['gear'][timepoint] == self.data['gear'][distpoint]:
                 self.start = max(min(timepoint, distpoint), 0)
