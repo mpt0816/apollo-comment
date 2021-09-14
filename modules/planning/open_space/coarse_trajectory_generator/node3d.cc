@@ -45,13 +45,13 @@ Node3d::Node3d(double x, double y, double phi,
 
   x_grid_ = static_cast<int>(
       (x_ - XYbounds[0]) /
-      open_space_conf.warm_start_config().xy_grid_resolution());
+      open_space_conf.warm_start_config().xy_grid_resolution());  // default: 0.3
   y_grid_ = static_cast<int>(
       (y_ - XYbounds[2]) /
       open_space_conf.warm_start_config().xy_grid_resolution());
   phi_grid_ = static_cast<int>(
       (phi_ - (-M_PI)) /
-      open_space_conf.warm_start_config().phi_grid_resolution());
+      open_space_conf.warm_start_config().phi_grid_resolution()); // default: 0.1
 
   traversed_x_.push_back(x);
   traversed_y_.push_back(y);
@@ -102,6 +102,7 @@ Box2d Node3d::GetBoundingBox(const common::VehicleParam& vehicle_param_,
   Box2d ego_box(
       {x + shift_distance * std::cos(phi), y + shift_distance * std::sin(phi)},
       phi, ego_length, ego_width);
+  // adc中心的box
   return ego_box;
 }
 

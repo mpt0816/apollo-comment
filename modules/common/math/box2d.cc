@@ -130,6 +130,7 @@ void Box2d::GetAllCorners(std::vector<Vec2d> *const corners) const {
 std::vector<Vec2d> Box2d::GetAllCorners() const { return corners_; }
 
 bool Box2d::IsPointIn(const Vec2d &point) const {
+  // 相当于将 point 转换到 center 的坐标系中
   const double x0 = point.x() - center_.x();
   const double y0 = point.y() - center_.y();
   const double dx = std::abs(x0 * cos_heading_ + y0 * sin_heading_);

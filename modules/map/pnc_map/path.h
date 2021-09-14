@@ -70,7 +70,7 @@ LaneWaypoint LeftNeighborWaypoint(const LaneWaypoint& waypoint);
  * be null.
  */
 LaneWaypoint RightNeighborWaypoint(const LaneWaypoint& waypoint);
-
+// lane的一部分
 struct LaneSegment {
   LaneSegment() = default;
   LaneSegment(LaneInfoConstPtr lane, const double start_s, const double end_s)

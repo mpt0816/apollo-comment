@@ -25,8 +25,8 @@ namespace planning {
 
 GridSearch::GridSearch(const PlannerOpenSpaceConfig& open_space_conf) {
   xy_grid_resolution_ =
-      open_space_conf.warm_start_config().grid_a_star_xy_resolution();
-  node_radius_ = open_space_conf.warm_start_config().node_radius();
+      open_space_conf.warm_start_config().grid_a_star_xy_resolution();  // default: 0.5
+  node_radius_ = open_space_conf.warm_start_config().node_radius();  // default: 0.25
 }
 
 double GridSearch::EuclidDistance(const double x1, const double y1,
@@ -44,6 +44,7 @@ bool GridSearch::CheckConstraints(std::shared_ptr<Node2d> node) {
   if (obstacles_linesegments_vec_.empty()) {
     return true;
   }
+  // 计算node到线段的距离
   for (const auto& obstacle_linesegments : obstacles_linesegments_vec_) {
     for (const common::math::LineSegment2d& linesegment :
          obstacle_linesegments) {

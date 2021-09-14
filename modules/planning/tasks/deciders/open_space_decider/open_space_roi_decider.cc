@@ -86,9 +86,9 @@ Status OpenSpaceRoiDecider::Process(Frame *frame) {
       AERROR << msg;
       return Status(ErrorCode::PLANNING_ERROR, msg);
     }
-
+    // 将停车位的left_top定点设置为ROI的原点
     SetOrigin(frame, spot_vertices);
-
+    // 设置adc的停车点(坐标)
     SetParkingSpotEndPose(frame, spot_vertices);
 
     if (!GetParkingBoundary(frame, spot_vertices, nearby_path, &roi_boundary)) {
@@ -221,6 +221,7 @@ void OpenSpaceRoiDecider::SetParkingSpotEndPose(
   const auto &origin_heading = frame->open_space_info().origin_heading();
 
   // End pose is set in normalized boundary
+  // 以ROI区域的左上角定点为远点,并旋转
   left_top -= origin_point;
   left_top.SelfRotate(-origin_heading);
   left_down -= origin_point;
@@ -235,10 +236,10 @@ void OpenSpaceRoiDecider::SetParkingSpotEndPose(
   double end_x = (left_top.x() + right_top.x()) / 2.0;
   double end_y = 0.0;
   const double parking_depth_buffer =
-      config_.open_space_roi_decider_config().parking_depth_buffer();
+      config_.open_space_roi_decider_config().parking_depth_buffer(); // default: 0.1m
   CHECK_GE(parking_depth_buffer, 0.0);
   const bool parking_inwards =
-      config_.open_space_roi_decider_config().parking_inwards();
+      config_.open_space_roi_decider_config().parking_inwards();  // default: false
   const double top_to_down_distance = left_top.y() - left_down.y();
   if (parking_spot_heading > common::math::kMathEpsilon) {
     if (parking_inwards) {
@@ -305,7 +306,7 @@ void OpenSpaceRoiDecider::SetPullOverSpotEndPose(Frame *const frame) {
 
 void OpenSpaceRoiDecider::SetParkAndGoEndPose(Frame *const frame) {
   const double kSTargetBuffer =
-      config_.open_space_roi_decider_config().end_pose_s_distance();
+      config_.open_space_roi_decider_config().end_pose_s_distance();  // default: 10.0m
   const double kSpeedRatio = 0.1;  // after adjust speed is 10% of speed limit
   // get vehicle current location
   // get vehicle s,l info
@@ -390,10 +391,10 @@ void OpenSpaceRoiDecider::GetRoadBoundary(
     std::vector<double> *right_lane_road_width) {
   double start_s =
       center_line_s -
-      config_.open_space_roi_decider_config().roi_longitudinal_range_start();
+      config_.open_space_roi_decider_config().roi_longitudinal_range_start();  // default: 15.0m
   double end_s =
       center_line_s +
-      config_.open_space_roi_decider_config().roi_longitudinal_range_end();
+      config_.open_space_roi_decider_config().roi_longitudinal_range_end();  // default: 15.0m
 
   hdmap::MapPathPoint start_point = nearby_path.GetSmoothPoint(start_s);
   double last_check_point_heading = start_point.heading();
@@ -410,7 +411,7 @@ void OpenSpaceRoiDecider::GetRoadBoundary(
     bool is_center_lane_heading_change =
         std::abs(common::math::NormalizeAngle(check_point_heading -
                                               last_check_point_heading)) >
-        config_.open_space_roi_decider_config().roi_line_segment_min_angle();
+        config_.open_space_roi_decider_config().roi_line_segment_min_angle(); // default: 0.3
     last_check_point_heading = check_point_heading;
 
     ADEBUG << "is is_center_lane_heading_change: "
@@ -437,12 +438,13 @@ void OpenSpaceRoiDecider::GetRoadBoundary(
     check_point_s =
         start_s +
         index *
-            config_.open_space_roi_decider_config().roi_line_segment_length();
+            config_.open_space_roi_decider_config().roi_line_segment_length();  // default: 1.0m
     check_point_s = check_point_s >= end_s ? end_s : check_point_s;
   }
 
   size_t left_point_size = left_lane_boundary->size();
   size_t right_point_size = right_lane_boundary->size();
+  // 将ROI边界的坐标归一化到 park spot 的 left_top
   for (size_t i = 0; i < left_point_size; i++) {
     left_lane_boundary->at(i) -= origin_point;
     left_lane_boundary->at(i).SelfRotate(-origin_heading);
@@ -660,7 +662,7 @@ void OpenSpaceRoiDecider::AddBoundaryKeyPoint(
   // as a key point.
   if (std::abs(current_curb_point_delta_theta) >
       config_.open_space_roi_decider_config()
-          .curb_heading_tangent_change_upper_limit()) {
+          .curb_heading_tangent_change_upper_limit()) {  // default: 1.0
     double point_vec_cos =
         is_left_curb ? std::cos(current_check_point_heading + M_PI / 2.0)
                      : std::cos(current_check_point_heading - M_PI / 2.0);
@@ -755,12 +757,15 @@ bool OpenSpaceRoiDecider::GetParkingBoundary(
     ADEBUG << "average_l is less than 0 in OpenSpaceROI";
     size_t point_size = right_lane_boundary.size();
     for (size_t i = 0; i < point_size; i++) {
+      // 将boundary的坐标从以parking spot的left top顶点为原点,恢复到世界坐标系的原点
       right_lane_boundary[i].SelfRotate(origin_heading);
       right_lane_boundary[i] += origin_point;
+      // 什么意思???
       right_lane_boundary[i] -= center_lane_boundary_right[i];
       right_lane_boundary[i] /= right_lane_road_width[i];
       right_lane_boundary[i] *= (-average_l);
       right_lane_boundary[i] += center_lane_boundary_right[i];
+      // 将boundary的坐标原点归一化到parking spot的left top顶点
       right_lane_boundary[i] -= origin_point;
       right_lane_boundary[i].SelfRotate(-origin_heading);
     }
@@ -1105,7 +1110,7 @@ bool OpenSpaceRoiDecider::GetParkAndGoBoundary(
   std::vector<double> center_lane_s_right;
   std::vector<double> left_lane_road_width;
   std::vector<double> right_lane_road_width;
-
+  // default: FLAGS_use_road_boundary_from_map = false
   if (FLAGS_use_road_boundary_from_map) {
     GetRoadBoundaryFromMap(
         nearby_path, center_line_s, origin_point, origin_heading,
@@ -1234,6 +1239,7 @@ bool OpenSpaceRoiDecider::GetParkingSpot(Frame *const frame,
   if (next_lanes_num != 0) {
     for (int i = 0; i < next_lanes_num; ++i) {
       auto next_lane_id = nearest_lane->lane().successor_id(i);
+      // 为什么每次循环都push_back nearest_lanesegment,不应该是只在第一次push_back一次吗??
       segments_vector.push_back(nearest_lanesegment);
       auto next_lane = hdmap_->GetLaneById(next_lane_id);
       LaneSegment next_lanesegment =
@@ -1257,7 +1263,7 @@ bool OpenSpaceRoiDecider::GetParkingSpot(Frame *const frame,
               "possible";
     return false;
   }
-
+  // defalut: adc到parking spot的距离 < 12.0m
   if (!CheckDistanceToParkingSpot(*nearby_path, target_parking_spot)) {
     AERROR << "target parking spot found, but too far, distance larger than "
               "pre-defined distance";
@@ -1372,7 +1378,7 @@ bool OpenSpaceRoiDecider::CheckDistanceToParkingSpot(
   nearby_path.GetNearestPoint(vehicle_vec, &vehicle_point_s, &vehicle_point_l);
   if (std::abs((left_bottom_point_s + right_bottom_point_s) / 2 -
                vehicle_point_s) <
-      config_.open_space_roi_decider_config().parking_start_range()) {
+      config_.open_space_roi_decider_config().parking_start_range()) {  // default: 12.0m
     return true;
   } else {
     return false;
@@ -1388,19 +1394,26 @@ bool OpenSpaceRoiDecider::FuseLineSegments(
     auto cur_last_point = cur_segment->back();
     auto next_first_point = next_segment->front();
     // Check if they are the same points
+    // 由传入的数据可知,在同一侧boundary上的segment的cur_last_point和next_first_point是同一个点
+    // 但后面的程序cur_segment可能有push_back操作,会不是同一个点
     if (cur_last_point.DistanceTo(next_first_point) > kEpsilon) {
       ++cur_segment;
       continue;
     }
+    // 由传入的数据可知,原始的segment的size==2, 但后面的程序cur_segment可能有push_back操作
     if (cur_segment->size() < 2 || next_segment->size() < 2) {
       AERROR << "Single point line_segments vec not expected";
       return false;
     }
     size_t cur_segments_size = cur_segment->size();
     auto cur_second_to_last_point = cur_segment->at(cur_segments_size - 2);
+    // next_segment->at(0) 和 cur_last_point是同一个点,因此使用next_segment->at(1)
+    // 但后面的程序cur_segment可能有push_back操作,会不是同一个点
     auto next_second_point = next_segment->at(1);
     if (CrossProd(cur_second_to_last_point, cur_last_point, next_second_point) <
         0.0) {
+      // 此时cur_second_to_last_point -> cur_last_point -> next_second_point顺时针
+      // 而需要其满足逆时针
       cur_segment->push_back(next_second_point);
       next_segment->erase(next_segment->begin(), next_segment->begin() + 2);
       if (next_segment->empty()) {
@@ -1474,9 +1487,9 @@ bool OpenSpaceRoiDecider::LoadObstacleInVertices(
       Box2d original_box = obstacle->PerceptionBoundingBox();
       original_box.Shift(-1.0 * origin_point);
       original_box.LongitudinalExtend(
-          config_.open_space_roi_decider_config().perception_obstacle_buffer());
+          config_.open_space_roi_decider_config().perception_obstacle_buffer());  // default: 0.2
       original_box.LateralExtend(
-          config_.open_space_roi_decider_config().perception_obstacle_buffer());
+          config_.open_space_roi_decider_config().perception_obstacle_buffer());  // default: 0.2
 
       // TODO(Jinyun): Check correctness of ExpandByDistance() in polygon
       // Polygon2d buffered_box(original_box);
@@ -1560,7 +1573,7 @@ bool OpenSpaceRoiDecider::FilterOutObstacle(const Frame &frame,
       obstacle_box.DistanceTo(end_pose_x_y);
   const double filtering_distance =
       config_.open_space_roi_decider_config()
-          .perception_obstacle_filtering_distance();
+          .perception_obstacle_filtering_distance();  // default: 1000.0m
   if (vehicle_center_to_obstacle > filtering_distance &&
       end_pose_center_to_obstacle > filtering_distance) {
     return true;

@@ -38,23 +38,23 @@ HybridAStar::HybridAStar(const PlannerOpenSpaceConfig& open_space_conf) {
   grid_a_star_heuristic_generator_ =
       std::make_unique<GridSearch>(planner_open_space_config_);
   next_node_num_ =
-      planner_open_space_config_.warm_start_config().next_node_num();
+      planner_open_space_config_.warm_start_config().next_node_num();  // default: 10
   max_steer_angle_ =
       vehicle_param_.max_steer_angle() / vehicle_param_.steer_ratio();
-  step_size_ = planner_open_space_config_.warm_start_config().step_size();
+  step_size_ = planner_open_space_config_.warm_start_config().step_size();  // default: 0.5
   xy_grid_resolution_ =
-      planner_open_space_config_.warm_start_config().xy_grid_resolution();
-  delta_t_ = planner_open_space_config_.delta_t();
+      planner_open_space_config_.warm_start_config().xy_grid_resolution();  // default: 0.5
+  delta_t_ = planner_open_space_config_.delta_t();                          // default: 0.5
   traj_forward_penalty_ =
-      planner_open_space_config_.warm_start_config().traj_forward_penalty();
+      planner_open_space_config_.warm_start_config().traj_forward_penalty(); // default: 1.0
   traj_back_penalty_ =
-      planner_open_space_config_.warm_start_config().traj_back_penalty();
+      planner_open_space_config_.warm_start_config().traj_back_penalty();    // default: 1.0
   traj_gear_switch_penalty_ =
-      planner_open_space_config_.warm_start_config().traj_gear_switch_penalty();
+      planner_open_space_config_.warm_start_config().traj_gear_switch_penalty(); // default: 10.0
   traj_steer_penalty_ =
-      planner_open_space_config_.warm_start_config().traj_steer_penalty();
+      planner_open_space_config_.warm_start_config().traj_steer_penalty();  // default: 0.0
   traj_steer_change_penalty_ = planner_open_space_config_.warm_start_config()
-                                   .traj_steer_change_penalty();
+                                   .traj_steer_change_penalty();  // default: 0.0
 }
 
 bool HybridAStar::AnalyticExpansion(std::shared_ptr<Node3d> current_node) {
@@ -590,6 +590,7 @@ bool HybridAStar::TrajectoryPartition(
 
   // Retrieve v, a and steer from path
   for (auto& result : *partitioned_result) {
+    // default: FLAGS_use_s_curve_speed_smooth = false
     if (FLAGS_use_s_curve_speed_smooth) {
       if (!GenerateSCurveSpeedAcceleration(&result)) {
         AERROR << "GenerateSCurveSpeedAcceleration fail";
@@ -720,6 +721,7 @@ bool HybridAStar::Plan(
       if (!ValidityCheck(next_node)) {
         continue;
       }
+      // 少了一种情况: next_node在open_set中,应该判断从当前节点到达是否cost更小
       if (open_set_.find(next_node->GetIndex()) == open_set_.end()) {
         explored_node_num++;
         const double start_time = Clock::NowInSeconds();

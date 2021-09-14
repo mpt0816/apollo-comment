@@ -123,6 +123,7 @@ Status OpenSpaceTrajectoryOptimizer::Plan(
   Eigen::MatrixXd dual_l_result_ds;
   Eigen::MatrixXd dual_n_result_ds;
 
+  // default: FLAGS_enable_parallel_trajectory_smoothing = false
   if (FLAGS_enable_parallel_trajectory_smoothing) {
     std::vector<HybridAStartResult> partition_trajectories;
     if (!warm_start_->TrajectoryPartition(result, &partition_trajectories)) {
@@ -155,7 +156,7 @@ Status OpenSpaceTrajectoryOptimizer::Plan(
                                    &uWS_vec[i]);
       // checking initial and ending points
       if (config_.planner_open_space_config()
-              .enable_check_parallel_trajectory()) {
+              .enable_check_parallel_trajectory()) {  // default: fasle
         AINFO << "trajectory id: " << i;
         AINFO << "trajectory partitioned size: " << xWS_vec[i].cols();
         AINFO << "initial point: " << xWS_vec[i].col(0).transpose();
@@ -179,6 +180,7 @@ Status OpenSpaceTrajectoryOptimizer::Plan(
       }
       // TODO(Jinyun): Further testing
       const auto smoother_start_timestamp = std::chrono::system_clock::now();
+      // default: FLAGS_use_iterative_anchoring_smoother = false
       if (FLAGS_use_iterative_anchoring_smoother) {
         if (!GenerateDecoupledTraj(
                 xWS_vec[i], last_time_u(1, 0), init_v, obstacles_vertices_vec,
@@ -444,7 +446,7 @@ bool OpenSpaceTrajectoryOptimizer::IsInitPointNearDestination(
                     (path_point.y() - end_pose_to_world_frame.y()));
 
   if (distance_to_init_point <
-      config_.planner_open_space_config().is_near_destination_threshold()) {
+      config_.planner_open_space_config().is_near_destination_threshold()) {  // default: 0.05
     return true;
   }
   return false;
@@ -567,12 +569,13 @@ bool OpenSpaceTrajectoryOptimizer::GenerateDistanceApproachTraj(
   size_t obstacles_num = obstacles_vertices_vec.size();
 
   // Get timestep delta t
-  double ts = config_.planner_open_space_config().delta_t();
+  double ts = config_.planner_open_space_config().delta_t();  // default: 0.5
 
   // slack_warm_up, temp usage
   Eigen::MatrixXd s_warm_up = Eigen::MatrixXd::Zero(obstacles_num, horizon + 1);
 
   // Dual variable warm start for distance approach problem
+  // default: FLAGS_use_dual_variable_warm_start = true
   if (FLAGS_use_dual_variable_warm_start) {
     if (dual_variable_warm_start_->Solve(
             horizon, ts, ego, obstacles_num, obstacles_edges_num, obstacles_A,
@@ -597,6 +600,7 @@ bool OpenSpaceTrajectoryOptimizer::GenerateDistanceApproachTraj(
     ADEBUG << "Distance approach problem solved successfully!";
   } else {
     ADEBUG << "Distance approach problem failed to solve";
+    // default: FLAGS_enable_smoother_failsafe = false
     if (FLAGS_enable_smoother_failsafe) {
       UseWarmStartAsResult(xWS, uWS, *l_warm_up, *n_warm_up, state_result_ds,
                            control_result_ds, time_result_ds, dual_l_result_ds,

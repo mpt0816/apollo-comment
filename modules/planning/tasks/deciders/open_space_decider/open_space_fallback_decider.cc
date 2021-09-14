@@ -94,10 +94,12 @@ Status OpenSpaceFallbackDecider::Process(Frame* frame) {
         future_collision_point;
 
     // min stop distance: (max_acc)
+    // v ^2 - 0 = 2as, 最大加速度为 4.0, 应该设置为可配置参数
     double min_stop_distance =
         0.5 * fallback_start_point.v() * fallback_start_point.v() / 4.0;
 
     // TODO(QiL): move 1.0 to configs
+    // 1.0 是 buffer
     double stop_distance =
         fallback_trajectory_pair_candidate.second == canbus::Chassis::GEAR_DRIVE
             ? std::max(future_collision_point.path_point().s() -
@@ -203,7 +205,7 @@ Status OpenSpaceFallbackDecider::Process(Frame* frame) {
       double temp_v = 0.0;
       double c =
           -2.0 * fallback_trajectory_pair_candidate.first[i].path_point().s();
-
+      // s = v0 * t + 0.5 * a * t^2, 求解 t
       if (QuardraticFormulaLowerSolution(stop_deceleration,
                                          2.0 * fallback_start_point.v(), c,
                                          &new_relative_time) &&
@@ -214,6 +216,7 @@ Status OpenSpaceFallbackDecider::Process(Frame* frame) {
         temp_v =
             fallback_start_point.v() + stop_deceleration * new_relative_time;
         // speed limit
+        // 速度限制在[-1.0, 1.0]
         if (std::abs(temp_v) < 1.0) {
           fallback_trajectory_pair_candidate.first[i].set_v(temp_v);
         } else {

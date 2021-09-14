@@ -279,7 +279,7 @@ void OpenSpaceTrajectoryPartition::InterpolateTrajectory(
   }
   interpolated_trajectory->clear();
   size_t interpolated_pieces_num =
-      open_space_trajectory_partition_config_.interpolated_pieces_num();
+      open_space_trajectory_partition_config_.interpolated_pieces_num();  // default: 50
   CHECK_GT(stitched_trajectory_result.size(), 0U);
   CHECK_GT(interpolated_pieces_num, 0U);
   size_t trajectory_to_be_partitioned_intervals_num =

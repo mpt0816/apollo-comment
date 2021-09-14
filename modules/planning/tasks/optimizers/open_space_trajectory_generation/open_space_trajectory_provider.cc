@@ -50,12 +50,14 @@ OpenSpaceTrajectoryProvider::OpenSpaceTrajectoryProvider(
 }
 
 OpenSpaceTrajectoryProvider::~OpenSpaceTrajectoryProvider() {
+  // default: true
   if (FLAGS_enable_open_space_planner_thread) {
     Stop();
   }
 }
 
 void OpenSpaceTrajectoryProvider::Stop() {
+  // default: FLAGS_enable_open_space_planner_thread = true
   if (FLAGS_enable_open_space_planner_thread) {
     is_generation_thread_stop_.store(true);
     if (thread_init_flag_) {
@@ -116,17 +118,20 @@ Status OpenSpaceTrajectoryProvider::Process() {
         previous_frame->current_frame_planned_trajectory()
             .header()
             .timestamp_sec();
+    // default: FLAGS_open_space_planning_period = 4.0
     const double planning_cycle_time = FLAGS_open_space_planning_period;
     PublishableTrajectory last_frame_complete_trajectory(
         previous_planning_header, previous_planning);
     std::string replan_reason;
     const double start_timestamp = Clock::NowInSeconds();
+    // default: FLAGS_open_space_trajectory_stitching_preserved_length = infinity()
     stitching_trajectory = TrajectoryStitcher::ComputeStitchingTrajectory(
         vehicle_state, start_timestamp, planning_cycle_time,
         FLAGS_open_space_trajectory_stitching_preserved_length, false,
         &last_frame_complete_trajectory, &replan_reason);
   } else {
     ADEBUG << "Replan due to fallback stop";
+    // default: FLAGS_planning_loop_rate = 10
     const double planning_cycle_time =
         1.0 / static_cast<double>(FLAGS_planning_loop_rate);
     stitching_trajectory = TrajectoryStitcher::ComputeReinitStitchingTrajectory(
@@ -138,7 +143,7 @@ Status OpenSpaceTrajectoryProvider::Process() {
   }
   // Get open_space_info from current frame
   const auto& open_space_info = frame_->open_space_info();
-
+  // default: FLAGS_enable_open_space_planner_thread = true
   if (FLAGS_enable_open_space_planner_thread) {
     ADEBUG << "Open space plan in multi-threads mode";
 
@@ -322,11 +327,11 @@ bool OpenSpaceTrajectoryProvider::IsVehicleNearDestination(
   if (distance_to_vehicle < config_.open_space_trajectory_provider_config()
                                 .open_space_trajectory_optimizer_config()
                                 .planner_open_space_config()
-                                .is_near_destination_threshold() &&
+                                .is_near_destination_threshold() &&  // default: 0.05 m
       theta_to_vehicle < config_.open_space_trajectory_provider_config()
                              .open_space_trajectory_optimizer_config()
                              .planner_open_space_config()
-                             .is_near_destination_theta_threshold()) {
+                             .is_near_destination_theta_threshold()) {  // default: 0.05 rad
     ADEBUG << "vehicle reach end_pose";
     frame_->mutable_open_space_info()->set_destination_reached(true);
     return true;
@@ -358,7 +363,7 @@ void OpenSpaceTrajectoryProvider::GenerateStopTrajectory(
   static constexpr double vEpsilon = 0.00001;
   double standstill_acceleration =
       frame_->vehicle_state().linear_velocity() >= -vEpsilon
-          ? -FLAGS_open_space_standstill_acceleration
+          ? -FLAGS_open_space_standstill_acceleration  // default: 0.0
           : FLAGS_open_space_standstill_acceleration;
   trajectory_data->clear();
   for (size_t i = 0; i < stop_trajectory_length; i++) {

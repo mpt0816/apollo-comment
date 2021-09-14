@@ -69,9 +69,9 @@ DualVariableWarmStartOSQPInterface::DualVariableWarmStartOSQPInterface(
 
   min_safety_distance_ =
       planner_open_space_config.dual_variable_warm_start_config()
-          .min_safety_distance();
+          .min_safety_distance();  // defautl: 0.01
   check_mode_ =
-      planner_open_space_config.dual_variable_warm_start_config().debug_osqp();
+      planner_open_space_config.dual_variable_warm_start_config().debug_osqp(); // fault: false
   osqp_config_ =
       planner_open_space_config.dual_variable_warm_start_config().osqp_config();
 }

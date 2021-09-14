@@ -100,7 +100,7 @@ bool IterativeAnchoringSmoother::Smooth(
 
   const double interpolated_delta_s =
       planner_open_space_config_.iterative_anchoring_smoother_config()
-          .interpolated_delta_s();
+          .interpolated_delta_s();  // default: 0.1
   std::vector<std::pair<double, double>> interpolated_warm_start_point2ds;
   double path_length = warm_start_path.Length();
   double delta_s = path_length / std::ceil(path_length / interpolated_delta_s);
@@ -387,13 +387,13 @@ bool IterativeAnchoringSmoother::GenerateInitialBounds(
 
   const bool estimate_bound =
       planner_open_space_config_.iterative_anchoring_smoother_config()
-          .estimate_bound();
+          .estimate_bound();  // default: false
   const double default_bound =
       planner_open_space_config_.iterative_anchoring_smoother_config()
-          .default_bound();
+          .default_bound(); // defautl: 2.0
   const double vehicle_shortest_dimension =
       planner_open_space_config_.iterative_anchoring_smoother_config()
-          .vehicle_shortest_dimension();
+          .vehicle_shortest_dimension();  // default: 1.04
   const double kEpislon = 1e-8;
 
   if (!estimate_bound) {
@@ -468,12 +468,12 @@ bool IterativeAnchoringSmoother::SmoothPath(
     for (size_t i = 0; i < point_size; ++i) {
       smoothed_point2d.emplace_back(opt_x[i], opt_y[i]);
     }
-
+    // 根据 x,y 生成其他路径信息
     if (!SetPathProfile(smoothed_point2d, smoothed_path_points)) {
       AERROR << "Set path profile fails";
       return false;
     }
-
+    // 检查 smooth 后的路径是否碰撞, 和计算 anchor point
     is_collision_free =
         CheckCollisionAvoidance(*smoothed_path_points, &colliding_point_index);
 
@@ -541,8 +541,8 @@ void IterativeAnchoringSmoother::AdjustPathBounds(
 
   const double collision_decrease_ratio =
       planner_open_space_config_.iterative_anchoring_smoother_config()
-          .collision_decrease_ratio();
-
+          .collision_decrease_ratio(); // default: 0.9
+  // 缩小 anchor point 的优化范围
   for (const auto index : colliding_point_index) {
     bounds->at(index) *= collision_decrease_ratio;
   }
@@ -608,22 +608,22 @@ bool IterativeAnchoringSmoother::SmoothSpeed(const double init_a,
                                              SpeedData* smoothed_speeds) {
   const double max_forward_v =
       planner_open_space_config_.iterative_anchoring_smoother_config()
-          .max_forward_v();
+          .max_forward_v();  // default: 2.0
   const double max_reverse_v =
       planner_open_space_config_.iterative_anchoring_smoother_config()
-          .max_reverse_v();
+          .max_reverse_v();  // default: 2.0
   const double max_forward_acc =
       planner_open_space_config_.iterative_anchoring_smoother_config()
-          .max_forward_acc();
+          .max_forward_acc();  // default: 3.0
   const double max_reverse_acc =
       planner_open_space_config_.iterative_anchoring_smoother_config()
-          .max_reverse_acc();
+          .max_reverse_acc();  // default: 2.0
   const double max_acc_jerk =
       planner_open_space_config_.iterative_anchoring_smoother_config()
-          .max_acc_jerk();
+          .max_acc_jerk();  // default: 4.0
   const double delta_t =
       planner_open_space_config_.iterative_anchoring_smoother_config()
-          .delta_t();
+          .delta_t();  // default: 0.2
 
   const double total_t = 2 * path_length / max_reverse_acc * 10;
 
@@ -661,9 +661,9 @@ bool IterativeAnchoringSmoother::SmoothSpeed(const double init_a,
 
   std::vector<double> x_ref(num_of_knots, path_length);
   piecewise_jerk_problem.set_x_ref(s_curve_config.ref_s_weight(),
-                                   std::move(x_ref));
-  piecewise_jerk_problem.set_weight_ddx(s_curve_config.acc_weight());
-  piecewise_jerk_problem.set_weight_dddx(s_curve_config.jerk_weight());
+                                   std::move(x_ref));  // default: 10.0
+  piecewise_jerk_problem.set_weight_ddx(s_curve_config.acc_weight());  // default: 1.0
+  piecewise_jerk_problem.set_weight_dddx(s_curve_config.jerk_weight()); // default: 1.0
   piecewise_jerk_problem.set_x_bounds(std::move(x_bounds));
   piecewise_jerk_problem.set_dx_bounds(std::move(dx_bounds));
   piecewise_jerk_problem.set_ddx_bounds(std::move(ddx_bounds));
