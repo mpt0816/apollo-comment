@@ -35,6 +35,7 @@ PlanningBase::~PlanningBase() {}
 
 Status PlanningBase::Init(const PlanningConfig& config) {
   injector_->planning_context()->Init();
+  // 注册所有的 task, injector在task的作用是什么???
   TaskFactory::Init(config, injector_);
   return Status::OK();
 }

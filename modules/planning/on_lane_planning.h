@@ -61,6 +61,7 @@ class OnLanePlanning : public PlanningBase {
    * @brief main logic of the planning module, runs periodically triggered by
    * timer.
    */
+  // 不是事件触发的吗?
   void RunOnce(const LocalView& local_view,
                ADCTrajectory* const ptr_trajectory_pb) override;
 

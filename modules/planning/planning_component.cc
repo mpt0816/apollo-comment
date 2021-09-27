@@ -41,13 +41,17 @@ using apollo::storytelling::Stories;
 bool PlanningComponent::Init() {
   injector_ = std::make_shared<DependencyInjector>();
   // default: FLAGS_use_navigation_mode = false
+  // 此flags的设置在modules/coomon/configs/config_flags.h中
   if (FLAGS_use_navigation_mode) {
     planning_base_ = std::make_unique<NaviPlanning>(injector_);
   } else {
     // 在显式构造时planner_dispatcher_指向OnLanePlannerDispatcher
     planning_base_ = std::make_unique<OnLanePlanning>(injector_);
   }
-
+  // 在其父类Component::Initialize中会调用LoadConfigFiles(config),会根据ComponentConfig中
+  // 配置的config_file_path和flag_file_path进行载参
+  // 配置文件在 modules/planning/dag/planning.dag
+  // GetProtoConfig函数将config_file_path设置的文件赋值给config_
   ACHECK(ComponentBase::GetProtoConfig(&config_))
       << "failed to load planning config file "
       << ComponentBase::ConfigFilePath();
@@ -70,7 +74,7 @@ bool PlanningComponent::Init() {
         std::lock_guard<std::mutex> lock(mutex_);
         routing_.CopyFrom(*routing);
       });
-
+  // debug宏展开为VLOG(4),log等级设置在cyber/setup.bash(default:0)中,setup.bash什么时候调用?
   traffic_light_reader_ = node_->CreateReader<TrafficLightDetection>(
       config_.topic_config().traffic_light_detection_topic(),
       [this](const std::shared_ptr<TrafficLightDetection>& traffic_light) {

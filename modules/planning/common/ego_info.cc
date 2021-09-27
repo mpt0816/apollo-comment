@@ -59,7 +59,7 @@ void EgoInfo::CalculateEgoBox(const common::VehicleState& vehicle_state) {
 void EgoInfo::Clear() {
   start_point_.Clear();
   vehicle_state_.Clear();
-  front_clear_distance_ = FLAGS_default_front_clear_distance;
+  front_clear_distance_ = FLAGS_default_front_clear_distance;  // default: 300.0
 }
 
 // TODO(all): remove this function and "front_clear_distance" related.

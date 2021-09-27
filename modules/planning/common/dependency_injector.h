@@ -51,10 +51,10 @@ class DependencyInjector {
   }
 
  private:
-  PlanningContext planning_context_;
-  FrameHistory frame_history_;
-  History history_;
-  EgoInfo ego_info_;
+  PlanningContext planning_context_; // 帧与帧之间的信息,Planning的状态,比如是否在换道过程中
+  FrameHistory frame_history_; // 所有的history frame
+  History history_;  // fram的历史和object status(动静态和决策)的历史
+  EgoInfo ego_info_;  // adc当前位置的box
   apollo::common::VehicleStateProvider vehicle_state_;
   LearningBasedData learning_based_data_;
 };

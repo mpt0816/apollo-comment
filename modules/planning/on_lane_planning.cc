@@ -99,7 +99,9 @@ Status OnLanePlanning::Init(const PlanningConfig& config) {
   injector_->planning_context()->mutable_planning_status()->Clear();
 
   // load map
-  // 使用绝对坐标，通过地图设计的单例模式得到高精地图的API
+  // 通过地图设计的单例模式得到高精地图的API
+  // 在Planning中,首次调用 hdmap,没有使用relative_map
+  // NaviPlanning使用的是relative_map,而这里生成的是高精地图,因此navigation_mode失效
   hdmap_ = HDMapUtil::BaseMapPtr();
   ACHECK(hdmap_) << "Failed to load map";
 
@@ -110,6 +112,7 @@ Status OnLanePlanning::Init(const PlanningConfig& config) {
 
   // dispatch planner
   // 在OnLanePlanning的构造时planner_dispatcher_指向OnLanePlannerDispatcher
+  // 在 Apollo 3.5 之后不支持 navigation_mode,仅适用于 Apollo 2.5 及 3.0
   // if (FLAGS_use_navigation_mode) {
   //   planning_base_ = std::make_unique<NaviPlanning>(injector_);
   // } else {
@@ -195,8 +198,8 @@ void OnLanePlanning::GenerateStopTrajectory(ADCTrajectory* ptr_trajectory_pb) {
   ptr_trajectory_pb->clear_trajectory_point();
 
   const auto& vehicle_state = injector_->vehicle_state()->vehicle_state();
-  const double max_t = FLAGS_fallback_total_time;
-  const double unit_t = FLAGS_fallback_time_unit;
+  const double max_t = FLAGS_fallback_total_time;  // default: 3.0
+  const double unit_t = FLAGS_fallback_time_unit;  // default: 0.1
 
   TrajectoryPoint tp;
   auto* path_point = tp.mutable_path_point();
@@ -323,6 +326,7 @@ void OnLanePlanning::RunOnce(const LocalView& local_view,
   if (FLAGS_enable_record_debug) {
     frame_->RecordInputDebug(ptr_trajectory_pb->mutable_debug());
   }
+  // 把Planning的输入经过处理,放入frame后的延时
   ptr_trajectory_pb->mutable_latency_stats()->set_init_frame_time_ms(
       Clock::NowInSeconds() - start_timestamp);
 
@@ -358,6 +362,7 @@ void OnLanePlanning::RunOnce(const LocalView& local_view,
   for (auto& ref_line_info : *frame_->mutable_reference_line_info()) {
     TrafficDecider traffic_decider;
     // 对各种交通规则进行注册
+    // init放在for循环外不行吗?
     traffic_decider.Init(traffic_rule_configs_);
     auto traffic_status =
         traffic_decider.Execute(frame_.get(), &ref_line_info, injector_);
@@ -420,7 +425,7 @@ void OnLanePlanning::RunOnce(const LocalView& local_view,
     ADEBUG << "Planning pb:" << ptr_trajectory_pb->header().DebugString();
 
     frame_->set_current_frame_planned_trajectory(*ptr_trajectory_pb);
-    if (FLAGS_enable_planning_smoother) {
+    if (FLAGS_enable_planning_smoother) {  // default: false
       planning_smoother_.Smooth(injector_->frame_history(), frame_.get(),
                                 ptr_trajectory_pb);
     }

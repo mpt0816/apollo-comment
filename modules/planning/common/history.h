@@ -43,8 +43,8 @@ class HistoryObjectDecision {
   std::vector<const ObjectDecisionType*> GetObjectDecision() const;
 
  private:
-  std::string id_;
-  std::vector<ObjectDecisionType> object_decision_;
+  std::string id_;  // object id
+  std::vector<ObjectDecisionType> object_decision_; // 决策有横向决策和纵向决策,是单独的,所以这里是vector
 };
 
 class HistoryFrame {
