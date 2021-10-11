@@ -106,7 +106,7 @@ Stage::StageStatus LaneFollowStage::Process(
     }
     ADEBUG << "No: [" << count << "] Reference Line.";
     ADEBUG << "IsChangeLanePath: " << reference_line_info.IsChangeLanePath();
-
+    // 当找到一条可行的trajectory后,就不再计算其他的reference line
     if (has_drivable_reference_line) {
       reference_line_info.SetDrivable(false);
       break;
@@ -217,7 +217,7 @@ Status LaneFollowStage::PlanOnReferenceLine(
       dest_stop_s = dest_sl.s();
     }
   }
-  // 设置因为obstacle造成的停车的cost
+  // 设置目的地前,因为静态obstacle造成的停车的cost
   for (const auto* obstacle :
        reference_line_info->path_decision()->obstacles().Items()) {
     if (obstacle->IsVirtual()) {
@@ -229,6 +229,8 @@ Status LaneFollowStage::PlanOnReferenceLine(
     if (obstacle->LongitudinalDecision().has_stop()) {
       bool add_stop_obstacle_cost = false;
       if (dest_stop_s < 0.0) {
+        // 这里应该是bug,当没有stop obstacle时,reference line的add cost应该是0
+        // 因此,应该是 add_stop_obstacle_cost = false;
         add_stop_obstacle_cost = true;
       } else {
         SLPoint stop_sl = GetStopSL(obstacle->LongitudinalDecision().stop(),

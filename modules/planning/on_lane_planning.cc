@@ -563,7 +563,10 @@ Status OnLanePlanning::Plan(
                            ptr_debug);
     }
   } else {
+    // cost 最小的reference line
     const auto* best_ref_info = frame_->FindDriveReferenceLineInfo();
+    // 如果有换道,则 lane change reference line
+    // 否则, 最后一条 reference line, 这里是有bug吧???
     const auto* target_ref_info = frame_->FindTargetReferenceLineInfo();
     if (!best_ref_info) {
       const std::string msg = "planner failed to make a driving plan";
