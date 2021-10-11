@@ -125,6 +125,7 @@ Status PathReuseDecider::Process(Frame* const frame,
   //                                          .front()
   //                                          .trajectory_type();
   if (path_reusable_) {
+    // 没有重新规划,上一帧规划求解成功,轨迹没有碰撞并且裁剪成功
     if (!frame->current_frame_planned_trajectory().is_replan() &&
         speed_optimization_successful && IsCollisionFree(reference_line_info) &&
         TrimHistoryPath(frame, reference_line_info)) {

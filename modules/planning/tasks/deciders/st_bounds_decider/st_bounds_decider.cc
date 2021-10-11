@@ -158,11 +158,13 @@ Status STBoundsDecider::GenerateFallbackSTBound(STBound* const st_bound,
       AERROR << msg;
       return Status(ErrorCode::PLANNING_ERROR, msg);
     }
+    // 将可行的s边界和对应的决策信息make pair
     std::vector<std::pair<STBoundPoint, ObsDecSet>> available_choices;
     ADEBUG << "Available choices are:";
     for (int j = 0; j < static_cast<int>(available_s_bounds.size()); ++j) {
       ADEBUG << "  (" << available_s_bounds[j].first << ", "
              << available_s_bounds[j].second << ")";
+      // 这里有bug吧,0.0应该是t,但是不受影响,后面没有用到这个值(t)
       available_choices.emplace_back(
           std::make_tuple(0.0, available_s_bounds[j].first,
                           available_s_bounds[j].second),
@@ -175,6 +177,7 @@ Status STBoundsDecider::GenerateFallbackSTBound(STBound* const st_bound,
       // Select the most conservative decision.
       auto top_choice_s_range = available_choices.front().first;
       auto top_choice_decision = available_choices.front().second;
+      // 在所有的s范围中,选择s_low最大的那组s范围值及对应的决策
       for (size_t j = 1; j < available_choices.size(); ++j) {
         if (std::get<1>(available_choices[j].first) <
             std::get<1>(top_choice_s_range)) {
@@ -186,6 +189,7 @@ Status STBoundsDecider::GenerateFallbackSTBound(STBound* const st_bound,
       // Set decision for obstacles without decisions.
       bool is_limited_by_upper_obs = false;
       bool is_limited_by_lower_obs = false;
+      // 更新 s_lower 和 s_upper
       if (s_lower < std::get<1>(top_choice_s_range)) {
         s_lower = std::get<1>(top_choice_s_range);
         is_limited_by_lower_obs = true;
@@ -231,7 +235,7 @@ Status STBoundsDecider::GenerateRegularSTBound(
     std::vector<std::pair<double, double>>* const st_guide_line) {
   // Initialize st-boundary.
   // default: kSTBoundsDeciderResolution = 0.1
-  for (double curr_t = 0.0; curr_t <= st_bounds_config_.total_time();
+  for (double curr_t = 0.0; curr_t <= st_bounds_config_.total_time();  // default: 7.0
        curr_t += kSTBoundsDeciderResolution) {
     st_bound->emplace_back(curr_t, std::numeric_limits<double>::lowest(),
                            std::numeric_limits<double>::max());
@@ -247,7 +251,7 @@ Status STBoundsDecider::GenerateRegularSTBound(
     ADEBUG << "Processing st-boundary at t = " << t;
 
     // Get Boundary due to driving limits
-    // 根据adc的最大加速度和最大减速度计算st范围
+    // 根据adc的最大加速度和最大减速度计算s范围
     auto driving_limits_bound = st_driving_limits_.GetVehicleDynamicsLimits(t);
     s_lower = std::fmax(s_lower, driving_limits_bound.first);
     s_upper = std::fmin(s_upper, driving_limits_bound.second);
@@ -255,8 +259,10 @@ Status STBoundsDecider::GenerateRegularSTBound(
            << "s_upper = " << s_upper << ", s_lower = " << s_lower;
 
     // Get Boundary due to obstacles
-    std::vector<std::pair<double, double>> available_s_bounds;
-    std::vector<ObsDecSet> available_obs_decisions;
+    // 由于可能没有决策信息,在某一个时刻t,会有多个可行的s边界
+    std::vector<std::pair<double, double>> available_s_bounds;  // 可行的s边界
+    // ObsDecSet是一个vector,是因为边界可能是由多个障碍物形成的
+    std::vector<ObsDecSet> available_obs_decisions;             // 可行s边界对应的决策
     if (!st_obstacles_processor_.GetSBoundsFromDecisions(
             t, &available_s_bounds, &available_obs_decisions)) {
       const std::string msg =
@@ -264,11 +270,13 @@ Status STBoundsDecider::GenerateRegularSTBound(
       AERROR << msg;
       return Status(ErrorCode::PLANNING_ERROR, msg);
     }
+    // 将可行的s边界和对应的决策信息make pair
     std::vector<std::pair<STBoundPoint, ObsDecSet>> available_choices;
     ADEBUG << "Available choices are:";
     for (int j = 0; j < static_cast<int>(available_s_bounds.size()); ++j) {
       ADEBUG << "  (" << available_s_bounds[j].first << ", "
              << available_s_bounds[j].second << ")";
+      // 这里有bug吧,0.0应该是t,但是不受影响,后面没有用到这个值(t)
       available_choices.emplace_back(
           std::make_tuple(0.0, available_s_bounds[j].first,
                           available_s_bounds[j].second),
@@ -282,6 +290,8 @@ Status STBoundsDecider::GenerateRegularSTBound(
              << available_choices.size() << " choices.";
       double guide_line_s = st_guide_line_.GetGuideSFromT(t);
       st_guide_line->emplace_back(t, guide_line_s);
+      // 对决策进行排序,选择出最优决策的s边界
+      // 选择 s 范围大的,其次选择包含guide_line_s范围的
       RankDecisions(guide_line_s, driving_limits_bound, &available_choices);
       // Select the top decision.
       auto top_choice_s_range = available_choices.front().first;

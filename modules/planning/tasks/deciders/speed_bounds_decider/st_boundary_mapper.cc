@@ -250,6 +250,7 @@ bool STBoundaryMapper::GetOverlapBoundaryPoints(
     // For those with predicted trajectories (moving obstacles):
     // 1. Subsample to reduce computation time.
     const int default_num_point = 50;
+    // 对路径进行稀疏,减少计算量
     DiscretizedPath discretized_path;
     if (path_points.size() > 2 * default_num_point) {
       const auto ratio = path_points.size() / default_num_point;

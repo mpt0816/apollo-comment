@@ -53,7 +53,7 @@ Status LaneChangeDecider::Process(
     AERROR << msg;
     return Status(ErrorCode::PLANNING_ERROR, msg);
   }
-
+  // default: false
   if (lane_change_decider_config.reckless_change_lane()) {
     PrioritizeChangeLane(true, reference_line_info);
     return Status::OK();
@@ -80,6 +80,7 @@ Status LaneChangeDecider::Process(
   bool has_change_lane = reference_line_info->size() > 1;
   ADEBUG << "has_change_lane: " << has_change_lane;
   if (!has_change_lane) {
+    // 此时只有一条参考线
     const auto& path_id = reference_line_info->front().Lanes().Id();
     if (prev_status->status() == ChangeLaneStatus::CHANGE_LANE_FINISHED) {
     } else if (prev_status->status() == ChangeLaneStatus::IN_CHANGE_LANE) {
@@ -218,7 +219,7 @@ void LaneChangeDecider::PrioritizeChangeLane(
   const auto& lane_change_decider_config = config_.lane_change_decider_config();
 
   // TODO(SHU): disable the reference line order change for now
-  if (!lane_change_decider_config.enable_prioritize_change_lane()) {
+  if (!lane_change_decider_config.enable_prioritize_change_lane()) {  // default: false
     return;
   }
   auto iter = reference_line_info->begin();

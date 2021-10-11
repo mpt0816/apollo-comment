@@ -63,6 +63,9 @@ Status PathLaneBorrowDecider::Process(
   return Status::OK();
 }
 
+// 当只有一条参考线,规划起点速度低,不在signal,stop sign,Junction附近,obstacle堵塞道路时间较长,
+// 并且堵塞的障碍物不在终点附近,obstacle距离adc不远,并且其前方没有低速obstacle(即不是车流缓慢工况)
+// 则进行 lane follow
 bool PathLaneBorrowDecider::IsNecessaryToBorrowLane(
     const Frame& frame, const ReferenceLineInfo& reference_line_info) {
   auto* mutable_path_decider_status = injector_->planning_context()
@@ -81,8 +84,9 @@ bool PathLaneBorrowDecider::IsNecessaryToBorrowLane(
     // If originally not borrowing neighbor lane:
     ADEBUG << "Blocking obstacle ID["
            << mutable_path_decider_status->front_static_obstacle_id() << "]";
+    // 以下的所有条件都满足时才会触发借道,借道可能涉及逆向车道,所以安全性要求较高
     // ADC requirements check for lane-borrowing:
-    // 必须只有一条参考线
+    // 当有多条参考线时,不能借道,优先采用换道的处理逻辑
     if (!HasSingleReferenceLine(frame)) {
       return false;
     }
@@ -92,7 +96,7 @@ bool PathLaneBorrowDecider::IsNecessaryToBorrowLane(
     }
 
     // Obstacle condition check for lane-borrowing:
-    // 堵塞的障碍物距离 SIGNAL或者STOP SIGN > 20m 或者 Junction > 15m 或者 没有堵塞的障碍物
+    // 堵塞的障碍物距离 SIGNAL或者STOP SIGN > 20m 或者 Junction > 15m时
     if (!IsBlockingObstacleFarFromIntersection(reference_line_info)) {
       return false;
     }

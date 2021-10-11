@@ -46,7 +46,7 @@ STBoundary::STBoundary(
     lower_points_.emplace_back(item.first.s(), t);
     upper_points_.emplace_back(item.second.s(), t);
   }
-
+  // 从boundary的左下角,逆时针依次放入polygon的角点中
   for (const auto& point : lower_points_) {
     points_.emplace_back(point.t(), point.s());
   }

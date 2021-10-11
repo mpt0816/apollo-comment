@@ -86,6 +86,7 @@ Status SpeedLimitDecider::GetSpeedLimits(
       if (ptr_obstacle->IsVirtual()) {
         continue;
       }
+      // 只考虑 nudge 的障碍物
       if (!ptr_obstacle->LateralDecision().has_nudge()) {
         continue;
       }
@@ -107,7 +108,7 @@ Status SpeedLimitDecider::GetSpeedLimits(
           ptr_obstacle->PerceptionSLBoundary().end_s();
       const double obstacle_back_s =
           ptr_obstacle->PerceptionSLBoundary().start_s();
-
+      // 如果在此 path point, vehicle 不在 obstacle 侧方,跳过
       if (vehicle_front_s < obstacle_back_s ||
           vehicle_back_s > obstacle_front_s) {
         continue;
@@ -133,6 +134,7 @@ Status SpeedLimitDecider::GetSpeedLimits(
            frenet_point_l + vehicle_param_.left_edge_to_center());
 
       // TODO(all): dynamic obstacles do not have nudge decision
+      // 相对于动态障碍物,以更低的速度通过静态障碍物
       if (is_close_on_left || is_close_on_right) {
         double nudge_speed_ratio = 1.0;
         if (ptr_obstacle->IsStatic()) {

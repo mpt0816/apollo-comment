@@ -69,6 +69,8 @@ class STObstaclesProcessor {
    * @param The corresponding possible obstacle decisions.
    * @return Whether we can get valid s-bounds.
    */
+  // 计算在t时刻adc的s范围,如果已有决策信息,那么s的范围是确定且唯一的,如果没有决策信息,
+  // 那么s范围是不确定的且不唯一(例如 overtake和follow会形成两个不同的s范围)
   bool GetSBoundsFromDecisions(
       double t,
       std::vector<std::pair<double, double>>* const available_s_bounds,

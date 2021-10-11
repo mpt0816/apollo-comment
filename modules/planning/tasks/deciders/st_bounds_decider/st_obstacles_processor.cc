@@ -153,6 +153,8 @@ Status STObstaclesProcessor::MapObstaclesToSTBoundaries(
     }
     // Update the trimmed obstacle into alternative st-bound storage
     // for later uses.
+    // obs_caution_end_t在上一步的处理中,对于动态障碍物 obs_caution_end_t 可能为0(overlap s都在in lane),
+    // 也可能从out lane回到in lane,但是 in lane仍有碰撞风险,所以下面的删除操作是不是有问题??
     while (lower_points.size() > 2 &&
            lower_points.back().t() > obs_caution_end_t) {
       lower_points.pop_back();
@@ -577,7 +579,7 @@ bool STObstaclesProcessor::GetOverlappingS(
     const Box2d& obstacle_instance, const double adc_l_buffer,
     std::pair<double, double>* const overlapping_s) {
   // Locate the possible range to search in details.
-  // 使用二分法粗鲁的搜索碰撞位置
+  // 使用二分法粗略的搜索碰撞位置,计算obstacle和path在纵向位置上的碰撞范围
   int pt_before_idx = GetSBoundingPathPointIndex(
       adc_path_points, obstacle_instance, vehicle_param_.front_edge_to_center(),
       true, 0, static_cast<int>(adc_path_points.size()) - 2);
@@ -605,6 +607,7 @@ bool STObstaclesProcessor::GetOverlappingS(
 
   // Detailed searching.
   bool has_overlapping = false;
+  // 计算 overlap s 的下边界
   for (int i = pt_before_idx; i <= pt_after_idx; ++i) {
     ADEBUG << "At ADC path index = " << i << " :";
     // 在路径点出计算adc的box(长度方向膨胀adc_l_buffer)，然后判断是否碰撞
@@ -620,6 +623,7 @@ bool STObstaclesProcessor::GetOverlappingS(
   if (!has_overlapping) {
     return false;
   }
+  // 计算 overlap s 的上边界
   for (int i = pt_after_idx; i >= pt_before_idx; --i) {
     ADEBUG << "At ADC path index = " << i << " :";
     if (IsADCOverlappingWithObstacle(adc_path_points[i], obstacle_instance,

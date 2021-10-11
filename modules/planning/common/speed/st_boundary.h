@@ -35,6 +35,8 @@
 namespace apollo {
 namespace planning {
 
+// 将obstacle的在st图中的区域表述成polygon,即adc的不可行区域
+// 即adc的速度曲线不能经过此区域
 class STBoundary : public common::math::Polygon2d {
  public:
   /** Constructors:
@@ -161,13 +163,13 @@ class STBoundary : public common::math::Polygon2d {
   FRIEND_TEST(StBoundaryTest, get_index_range);
 
  private:
-  BoundaryType boundary_type_ = BoundaryType::UNKNOWN;
+  BoundaryType boundary_type_ = BoundaryType::UNKNOWN;  // boundary type,可以看做是纵向决策
 
   std::vector<STPoint> upper_points_;
   std::vector<STPoint> lower_points_;
 
-  std::string id_;
-  double characteristic_length_ = 1.0;
+  std::string id_;  // obstacle ID
+  double characteristic_length_ = 1.0;  // ??? 
   double min_s_ = std::numeric_limits<double>::max();
   double max_s_ = std::numeric_limits<double>::lowest();
   double min_t_ = std::numeric_limits<double>::max();
@@ -178,7 +180,7 @@ class STBoundary : public common::math::Polygon2d {
   STPoint upper_left_point_;
   STPoint upper_right_point_;
 
-  double obstacle_road_right_ending_t_;
+  double obstacle_road_right_ending_t_;  // 障碍物路权结束时间??
 };
 
 }  // namespace planning

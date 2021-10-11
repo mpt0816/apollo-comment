@@ -104,7 +104,7 @@ Status PathAssessmentDecider::Process(
       }
       continue;
     }
-    // 对 换道、借道、本车道工况的每个规划路径点上增加路径信息
+    // 对 换道、借道的每个规划路径点上增加路径信息
     SetPathInfo(*reference_line_info, &curr_path_data);
     // Trim all the lane-borrowing paths so that it ends with an in-lane
     // position.
@@ -296,6 +296,7 @@ bool ComparePathData(const PathData& lhs, const PathData& rhs,
   }
   // If roughly same length, and must borrow neighbor lane,
   // then prefer to borrow forward lane rather than reverse lane.
+  // 选择 逆向借道 少的
   int lhs_on_reverse =
       ContainsOutOnReverseLane(lhs.path_point_decision_guide());
   int rhs_on_reverse =
@@ -570,6 +571,7 @@ bool PathAssessmentDecider::IsCollidingWithStaticObstacles(
 
 bool PathAssessmentDecider::IsStopOnReverseNeighborLane(
     const ReferenceLineInfo& reference_line_info, const PathData& path_data) {
+  // 只判断 LANE borrow的工况
   if (path_data.path_label().find("left") == std::string::npos &&
       path_data.path_label().find("right") == std::string::npos) {
     return false;
@@ -585,6 +587,7 @@ bool PathAssessmentDecider::IsStopOnReverseNeighborLane(
   static constexpr double kLookForwardBuffer =
       5.0;  // filter out sidepass stop fence
   const double adc_end_s = reference_line_info.AdcSlBoundary().end_s();
+  // 只关系最后一个停车点
   for (const auto& stop_point_sl : all_stop_point_sl) {
     if (stop_point_sl.s() - adc_end_s < kLookForwardBuffer) {
       continue;

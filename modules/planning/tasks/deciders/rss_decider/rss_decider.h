@@ -67,6 +67,7 @@ struct rss_world_model_struct {
   double laneSeg_width_max;
 };
 
+// Responsibility Sensitive Safety, Intel Mobileye
 class RssDecider : public Task {
  public:
   explicit RssDecider(const TaskConfig &config);
