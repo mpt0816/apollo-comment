@@ -170,7 +170,8 @@ bool PathDecider::MakeStaticObstacleDecision(
                                         object_decision);
     } else if (sl_boundary.end_l() >= curr_l - min_nudge_l &&
                sl_boundary.start_l() <= curr_l + min_nudge_l) {
-      // 后面的速度规划或者trajectory的决策会用到这些信息吗?还是说只是用来打标签?
+      // 后面的速度规划或者trajectory的决策会用到这些信息
+      // speed规划会进行停车处理
       // 2. STOP if laterally too overlapping.
       *object_decision.mutable_stop() = GenerateObjectStopDecision(*obstacle);
 
@@ -187,8 +188,8 @@ bool PathDecider::MakeStaticObstacleDecision(
                                                obstacle->Id(), object_decision);
       }
     } else {
-      // 为什么路径规划结束后还进行NUDGE？？？？
-      // 后面的速度规划或者trajectory的决策会用到这些信息吗?还是说只是用来打标签?
+      // 后面的速度规划或者trajectory的决策会用到这些信息吗
+      // 在speed_bounds_decider中会根据NUDGE进行减速处理
       // 3. NUDGE if laterally very close.
       if (sl_boundary.end_l() < curr_l - min_nudge_l) {  // &&
         // sl_boundary.end_l() > curr_l - min_nudge_l - 0.3) {

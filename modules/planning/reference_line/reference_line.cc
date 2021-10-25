@@ -805,6 +805,9 @@ std::string ReferenceLine::DebugString() const {
 }
 
 double ReferenceLine::GetSpeedLimitFromS(const double s) const {
+  // speed_limit_是减速带限速,减速带限速要远低于道路限速
+  // 因此,如果存在减速带则使用减速带限速,
+  // 反之,才使用道路限速
   for (const auto& speed_limit : speed_limit_) {
     if (s >= speed_limit.start_s && s <= speed_limit.end_s) {
       return speed_limit.speed_limit;

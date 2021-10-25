@@ -102,6 +102,7 @@ bool ReferenceLineInfo::Init(const std::vector<const Obstacle*>& obstacles) {
   for (const auto& speed_bump : map_path.speed_bump_overlaps()) {
     // -1 and + 1.0 are added to make sure it can be sampled.
     // default: FLAGS_speed_bump_speed_limit = 4.4704(10km/h)
+    // 设置减速带限速
     reference_line_.AddSpeedLimit(speed_bump.start_s - 1.0,
                                   speed_bump.end_s + 1.0,
                                   FLAGS_speed_bump_speed_limit);
