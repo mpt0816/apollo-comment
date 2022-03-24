@@ -75,7 +75,8 @@ std::vector<Condition> EndConditionSampler::SampleLonEndConditionsForCruising(
     // 根据最大加速度和初始状态计算adc的最大速度范围
     double v_upper = std::min(feasible_region_.VUpper(time), ref_cruise_speed);
     double v_lower = feasible_region_.VLower(time);
-
+    
+    // 在Cruising纵向采样时， s的采样是不知道的，求解四次多项式时不会用到，因此这里设置为0
     State lower_end_s = {0.0, v_lower, 0.0};
     end_s_conditions.emplace_back(lower_end_s, time);
 

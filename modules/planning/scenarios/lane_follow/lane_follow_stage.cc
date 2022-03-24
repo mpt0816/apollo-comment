@@ -273,6 +273,8 @@ void LaneFollowStage::PlanFallbackTrajectory(
     reference_line_info->set_trajectory_type(ADCTrajectory::PATH_FALLBACK);
   }
   // 如果上面的fallback规划失败，从上一帧规划路径中截取
+  // 这里存在bug，当路径规划成功后，并没有对 trajectory_type进行设置，其默认仍然是 ADCTrajectory::UNKOWN,
+  // 会导致已经规划成功的路径失效
   if (reference_line_info->trajectory_type() != ADCTrajectory::PATH_FALLBACK) {
     if (!RetrieveLastFramePathProfile(
             reference_line_info, frame,

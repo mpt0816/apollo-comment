@@ -56,6 +56,7 @@ SpeedData SpeedProfileGenerator::GenerateFallbackSpeed(
 
   // TODO(all): dt is too small;
   double delta_t = FLAGS_fallback_time_unit;      // default: 0.1
+  // 更小的规划时域是为了减少求解时间？？？上面百度的注释也说明了，此时的求解颗粒度可以大一些，减少时间？？
   double total_time = FLAGS_fallback_total_time;  // dafault: 3.0
   const size_t num_of_knots = static_cast<size_t>(total_time / delta_t) + 1;
 
@@ -63,13 +64,18 @@ SpeedData SpeedProfileGenerator::GenerateFallbackSpeed(
                                                    init_s);
 
   std::vector<double> end_state_ref(num_of_knots, stop_distance);
+  // 每个s的决策变量的目标值是停车距离，表示希望车辆尽快停下来
+  // 没有对 dx, ddx, dddx, ref_v的weight进行设置，从代码中可知，会采用默认权重0，
+  // 因此优化为的cost func = sum(s_i),即会在车辆最大能力范围尽快停下来
   piecewise_jerk_problem.set_x_ref(1.0, std::move(end_state_ref));
 
   piecewise_jerk_problem.set_scale_factor({1.0, 10.0, 100.0});
-
+  // s的最大范围应该符合车辆动力学，即车辆按照最大a和da进行刹车时，车辆在此范围内可以停下来，否则会造成优化问题无解
+  // 对于乘用车来说100m的刹车距离是足够了
   piecewise_jerk_problem.set_x_bounds(0.0, std::fmax(stop_distance, 100.0));
   piecewise_jerk_problem.set_dx_bounds(
       0.0, std::fmax(FLAGS_planning_upper_speed_limit, init_v));  // default: 31.3 m/s
+  // 这里使用车辆的最大加减速能力作为硬约束，而不应该使用舒适性加减速约束
   piecewise_jerk_problem.set_ddx_bounds(veh_param.max_deceleration(),
                                         veh_param.max_acceleration());
   piecewise_jerk_problem.set_dddx_bound(FLAGS_longitudinal_jerk_lower_bound,  // default: -4.0
@@ -78,7 +84,7 @@ SpeedData SpeedProfileGenerator::GenerateFallbackSpeed(
   // Solve the problem
   if (!piecewise_jerk_problem.Optimize()) {
     AERROR << "Piecewise jerk fallback speed optimizer failed!";
-    // 恒定加速度停车
+    // 按照配置参数的恒定加速度停车
     return GenerateStopProfile(init_v, init_a);
   }
 

@@ -312,7 +312,7 @@ std::vector<double> TrajectoryEvaluator::ComputeLongitudinalGuideVelocity(
   } else {
     double dist_s = planning_target.stop_point().s() - init_s_[0];
     if (dist_s < FLAGS_numerical_epsilon) {
-      // 初始化有问题吧？ init_s_[0]？？
+      // 此时停车点在ADC车后，设置匀加速模型的初始速度为0，加速度为0
       PiecewiseAccelerationTrajectory1d lon_traj(init_s_[0], 0.0);
       lon_traj.AppendSegment(
           0.0, FLAGS_trajectory_time_length + FLAGS_numerical_epsilon);
@@ -323,7 +323,7 @@ std::vector<double> TrajectoryEvaluator::ComputeLongitudinalGuideVelocity(
       }
       return reference_s_dot;
     }
-
+    // 停车点在ADC车前
     double a_comfort = FLAGS_longitudinal_acceleration_upper_bound *  // default: 4.0
                        FLAGS_comfort_acceleration_factor;             // default: 0.5
     double d_comfort = -FLAGS_longitudinal_acceleration_lower_bound * // default: -6.0

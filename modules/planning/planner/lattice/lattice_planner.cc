@@ -98,6 +98,7 @@ Status LatticePlanner::Plan(const TrajectoryPoint& planning_start_point,
   size_t success_line_count = 0;
   size_t index = 0;
   for (auto& reference_line_info : *frame->mutable_reference_line_info()) {
+    // 第一条参考线的优先级最高(由决策对参考线排序)
     if (index != 0) {
       reference_line_info.SetPriorityCost(
           FLAGS_cost_non_priority_reference_line);  // default: 5.0
